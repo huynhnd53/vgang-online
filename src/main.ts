@@ -9,5 +9,5 @@ try {
 } catch (err) {
   console.error(err);
   document.body.innerHTML =
-    '<p style="color:#fff;font-family:system-ui;padding:24px">Không khởi động được game. Trình duyệt cần hỗ trợ WebGL.</p>';
+    '<p style="color:#fff;background:#1f2a30;font-family:system-ui;padding:24px;margin:0;height:100%">Không khởi động được game. Trình duyệt cần hỗ trợ WebGL.</p>';
 }
