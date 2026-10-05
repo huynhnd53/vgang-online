@@ -1,14 +1,5 @@
+import { type BikeDef, bikeDef, DEFAULT_BIKE } from './bikes';
 import { DEFAULT_GAUGE, drawGauge, type GaugeTheme, gaugeTheme } from './gauges';
-
-/** Native pixel size of public/assets/handlebar.webp. */
-const IMG_W = 1672;
-const IMG_H = 940;
-/** First row of the image that has handlebar pixels; everything above is transparent. */
-const BAR_TOP = 270;
-/** Steering column pivot, below the image. */
-const PIVOT = { x: 836, y: 1180 };
-/** Gauge canvas placement over the dial glass, in image pixels. */
-const GAUGE = { x: 615, y: 345, w: 480, h: 220 };
 
 export type CockpitAction = 'horn-down' | 'horn-up' | 'light' | 'signal-left' | 'signal-right' | 'engine';
 
@@ -22,56 +13,59 @@ export interface CockpitView {
   odometerKm: number;
 }
 
-interface Hotspot {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  label: string;
-  down: CockpitAction;
-  up?: CockpitAction;
-}
-
-/** Switch positions on the left and right switch housings of the asset. */
-const HOTSPOTS: Hotspot[] = [
-  { x: 368, y: 440, w: 70, h: 78, label: 'Đèn pha', down: 'light' },
-  { x: 384, y: 535, w: 100, h: 60, label: 'Còi', down: 'horn-down', up: 'horn-up' },
-  { x: 398, y: 594, w: 40, h: 42, label: 'Xi nhan trái', down: 'signal-left' },
-  { x: 438, y: 594, w: 40, h: 42, label: 'Xi nhan phải', down: 'signal-right' },
-  { x: 1200, y: 615, w: 100, h: 60, label: 'Nút đề', down: 'engine' },
-];
-
 export class Cockpit {
   readonly root = document.createElement('div');
   private readonly turn = document.createElement('div');
   private readonly canvas = document.createElement('canvas');
-  private readonly img: HTMLImageElement;
+  private readonly img = document.createElement('img');
+  private hotspots: HTMLButtonElement[] = [];
+  private bike: BikeDef = bikeDef(DEFAULT_BIKE);
+  private assetBase: string;
   private scale = 1;
+  private vw = 0;
+  private vh = 0;
   private lastKey = '';
   private theme: GaugeTheme = gaugeTheme(DEFAULT_GAUGE);
   onAction: (action: CockpitAction) => void = () => {};
 
-  constructor(src: string) {
+  constructor(assetBase: string) {
+    this.assetBase = assetBase;
     this.root.id = 'cockpit';
     this.turn.className = 'cockpit-turn';
-    const img = document.createElement('img');
-    this.img = img;
-    img.src = src;
-    img.alt = '';
-    img.draggable = false;
-    img.width = IMG_W;
-    img.height = IMG_H;
+    this.img.alt = '';
+    this.img.draggable = false;
     this.canvas.className = 'cockpit-gauge';
-    Object.assign(this.canvas.style, {
-      left: `${GAUGE.x}px`,
-      top: `${GAUGE.y}px`,
-      width: `${GAUGE.w}px`,
-      height: `${GAUGE.h}px`,
-    });
-    this.turn.style.transformOrigin = `${PIVOT.x}px ${PIVOT.y}px`;
-    this.turn.append(img, this.canvas);
+    this.turn.append(this.img, this.canvas);
+    this.root.append(this.turn);
+    this.setBike(this.bike.id);
+  }
 
-    for (const h of HOTSPOTS) {
+  get bikeId(): string {
+    return this.bike.id;
+  }
+
+  /** Swaps the whole front end: photo, instrument position and switch hotspots. */
+  setBike(id: string): void {
+    const b = bikeDef(id);
+    this.bike = b;
+    this.img.src = `${this.assetBase}${b.image}`;
+    this.img.width = b.width;
+    this.img.height = b.height;
+    for (const el of [this.root, this.turn]) {
+      el.style.width = `${b.width}px`;
+      el.style.height = `${b.height}px`;
+    }
+    Object.assign(this.img.style, { width: `${b.width}px`, height: `${b.height}px` });
+    Object.assign(this.canvas.style, {
+      left: `${b.gauge.x}px`,
+      top: `${b.gauge.y}px`,
+      width: `${b.gauge.w}px`,
+      height: `${b.gauge.h}px`,
+    });
+    this.turn.style.transformOrigin = `${b.pivot.x}px ${b.pivot.y}px`;
+
+    for (const h of this.hotspots) h.remove();
+    this.hotspots = b.hotspots.map((h) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'hotspot';
@@ -93,22 +87,28 @@ export class Cockpit {
       btn.addEventListener('pointerleave', release);
       btn.addEventListener('pointercancel', release);
       this.turn.append(btn);
-    }
-    this.root.append(this.turn);
+      return btn;
+    });
+    if (this.vw) this.layout(this.vw, this.vh);
+    this.lastKey = '';
   }
 
   /** Fits the bars to the bottom of the screen: arms always reach past both edges. */
   layout(vw: number, vh: number): void {
-    const scale = Math.max(vw / (IMG_W - 80), 0.2);
+    this.vw = vw;
+    this.vh = vh;
+    const b = this.bike;
+    const scale = Math.max(vw / (b.width - 80), 0.2);
     // Show the bar, dial and grips; let the lower column fall off-screen on short screens.
-    const visibleBottom = Math.max(600, Math.min(720, BAR_TOP + (vh * 0.44) / scale));
-    const left = (vw - IMG_W * scale) / 2;
+    const [lo, hi] = b.visibleBottom;
+    const visibleBottom = Math.max(lo, Math.min(hi, b.barTop + (vh * 0.44) / scale));
+    const left = (vw - b.width * scale) / 2;
     const top = vh - visibleBottom * scale;
     this.scale = scale;
     this.root.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(1, Math.round(GAUGE.w * scale * dpr));
-    const h = Math.max(1, Math.round(GAUGE.h * scale * dpr));
+    const w = Math.max(1, Math.round(b.gauge.w * scale * dpr));
+    const h = Math.max(1, Math.round(b.gauge.h * scale * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
@@ -125,7 +125,7 @@ export class Cockpit {
   /** Screen-space height covered by the bars, so other UI can sit above them. */
   get coveredHeight(): number {
     const rect = this.root.getBoundingClientRect();
-    return window.innerHeight - (rect.top + BAR_TOP * this.scale);
+    return window.innerHeight - (rect.top + this.bike.barTop * this.scale);
   }
 
   render(v: CockpitView): void {
@@ -151,6 +151,6 @@ export class Cockpit {
   }
 
   private drawGauge(v: CockpitView): void {
-    drawGauge(this.canvas, this.theme, v);
+    drawGauge(this.canvas, this.theme, v, this.bike.gaugeClip);
   }
 }

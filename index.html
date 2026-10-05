@@ -17,7 +17,7 @@
         <div class="hud-left">
           <div class="chip" id="place">Dạo phố</div>
           <button class="btn" id="btn-mute" type="button">Âm thanh: bật</button>
-          <button class="btn" id="btn-help" type="button">Đồng hồ</button>
+          <button class="btn" id="btn-help" type="button">Đổi xe</button>
         </div>
         <canvas id="minimap" width="150" height="150" aria-label="Bản đồ"></canvas>
       </div>
@@ -44,9 +44,11 @@
       <div id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
         <div class="panel-card">
           <div class="panel-head">
-            <h2 id="panel-title">Chọn mặt đồng hồ</h2>
+            <h2 id="panel-title">Chọn xe</h2>
           </div>
-          <div id="gauge-picker" class="gauge-grid" role="radiogroup" aria-labelledby="panel-title"></div>
+          <div id="bike-picker" class="gauge-grid" role="radiogroup" aria-labelledby="panel-title"></div>
+          <h3 class="panel-sub" id="gauge-title">Mặt đồng hồ</h3>
+          <div id="gauge-picker" class="gauge-grid" role="radiogroup" aria-labelledby="gauge-title"></div>
           <details class="help">
             <summary>Cách chơi</summary>
             <ul class="help-list">

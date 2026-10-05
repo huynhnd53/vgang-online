@@ -700,16 +700,19 @@ export function gaugeTheme(id: string): GaugeTheme {
   return GAUGE_THEMES.find((t) => t.id === id) ?? GAUGE_THEMES.find((t) => t.id === DEFAULT_GAUGE)!;
 }
 
-/** Draws a face clipped to the dial glass into a canvas of any size (live gauge or a preview). */
-export function drawGauge(canvas: HTMLCanvasElement, theme: GaugeTheme, v: GaugeView): void {
+/**
+ * Draws a face into a canvas of any size (live gauge or a preview). Faces are designed in a 480 × 220 space,
+ * stretched to the canvas, and clipped to the oval dial glass or a rounded LCD rectangle.
+ */
+export function drawGauge(canvas: HTMLCanvasElement, theme: GaugeTheme, v: GaugeView, clip: 'ellipse' | 'rect' = 'ellipse'): void {
   const ctx = canvas.getContext('2d')!;
-  const k = canvas.width / GAUGE_W;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.setTransform(canvas.width / GAUGE_W, 0, 0, canvas.height / GAUGE_H, 0, 0);
   ctx.save();
   ctx.beginPath();
-  ctx.ellipse(LENS.x, LENS.y, LENS.rx, LENS.ry, 0, 0, Math.PI * 2);
+  if (clip === 'ellipse') ctx.ellipse(LENS.x, LENS.y, LENS.rx, LENS.ry, 0, 0, Math.PI * 2);
+  else ctx.roundRect(4, 4, GAUGE_W - 8, GAUGE_H - 8, 18);
   ctx.clip();
   theme.draw(ctx, v);
   ctx.restore();

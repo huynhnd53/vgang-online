@@ -11,7 +11,7 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
   Vuốt nửa phải để nhìn. Các nút Còi, xi nhan, Đèn, Đề ở góc phải. Nên xoay ngang.
 - Có thể bấm thẳng vào công tắc trên ảnh tay lái: đèn, còi, xi nhan, nút đề ⚡.
-- Khi vào game, chọn một trong 10 mặt đồng hồ (5 kiểu theo đồng hồ xe thật: LCD xanh dương, kim cam đêm, LCD xám, mặt trắng, LCD thể thao; và Cổ điển, Điện tử, Thể thao, Retro, Neon); đổi lại bất cứ lúc nào bằng nút *Đồng hồ*.
+- Khi vào game, chọn xe (đầu xe) và mặt đồng hồ; đổi lại bất cứ lúc nào bằng nút *Đổi xe*.
 - Xi nhan tự tắt sau khi rẽ xong. Đứng yên giữ phanh để dắt lùi xe.
 
 Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu trong `localStorage` của từng trình duyệt.
@@ -44,11 +44,22 @@ Cấu trúc:
 
 Game tự giảm độ phân giải khi khung hình tụt.
 
-### Thay asset
+### Thêm đầu xe
 
-- Ảnh tay lái: `public/assets/handlebar.webp` (1672×940, nền trong suốt). Nếu đổi ảnh khác kích thước,
-  sửa các hằng số `IMG_W`, `IMG_H`, `BAR_TOP`, `GAUGE` và `HOTSPOTS` trong `src/cockpit/cockpit.ts`.
-- Đồ đường phố: `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
+Mỗi đầu xe là một mục trong `BIKES` ở `src/cockpit/bikes.ts` cộng một ảnh trong `public/assets/`.
+
+Yêu cầu ảnh:
+- PNG hoặc WebP **nền trong suốt**, góc nhìn của người lái, có cả hai tay cầm tay lái.
+- Rộng khoảng 1600px trở lên; phần đầu xe nằm ở nửa dưới ảnh, tay lái tràn gần hết chiều ngang.
+- Màn hình đồng hồ nên để trống hoặc tối (game vẽ đồng hồ chạy thật đè lên).
+
+Cấu hình (toạ độ tính bằng pixel của ảnh): `barTop` (hàng đầu tiên có đầu xe), `gauge` (khung màn hình
+đồng hồ) và `gaugeClip` (`'ellipse'` cho mặt bầu dục, `'rect'` cho màn LCD), `pivot` (điểm xoay khi lái),
+`hotspots` (vị trí công tắc đèn, còi, xi nhan, nút đề), `face` (mặt đồng hồ mặc định).
+
+### Đồ đường phố
+
+- `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
   trong suốt, đã cắt sát vật). Kích thước ngoài đời và điểm chạm đất của từng ảnh nằm ở đầu
   `src/world/night/simpleCity.ts` (`LAMP`, `TRAFFIC`, `BENCH`, `PLANTER`, `CONE`).
 

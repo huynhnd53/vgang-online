@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Sound } from './audio/sound';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
+import { BIKES, bikeDef } from './cockpit/bikes';
 import { DEFAULT_GAUGE, drawGauge, GAUGE_THEMES, gaugeTheme } from './cockpit/gauges';
 import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
 import { type Block, type City, generateCity } from './sim/city';
@@ -91,7 +92,8 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
 
-    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
+    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/`);
+    this.cockpit.setBike(bikeDef(getString('bike')).id);
     $('cockpit-layer').append(this.cockpit.root);
     this.cockpit.onAction = (a) => this.handle(a);
     this.gauge = gaugeTheme(getString('gauge') ?? DEFAULT_GAUGE).id;
@@ -115,6 +117,7 @@ export class Game {
     });
 
     // The start screen (gauge picker) shows on every visit.
+    this.buildBikePicker();
     this.buildGaugePicker();
     this.refreshChrome();
   }
@@ -152,17 +155,54 @@ export class Game {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
+  /** Cards for each front end; picking one swaps the handlebar photo and switches to its own gauge face. */
+  private buildBikePicker(): void {
+    const picker = $('bike-picker');
+    const cards: HTMLButtonElement[] = [];
+    const select = (id: string, applyFace: boolean) => {
+      this.cockpit.setBike(id);
+      setString('bike', id);
+      if (applyFace) this.selectGauge?.(bikeDef(id).face);
+      for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
+    };
+    for (const bike of BIKES) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'gauge-card bike-card';
+      card.setAttribute('role', 'radio');
+      card.dataset.id = bike.id;
+      const img = document.createElement('img');
+      img.src = `${import.meta.env.BASE_URL}assets/${bike.image}`;
+      img.alt = '';
+      // Show only the handlebar part of the photo.
+      img.style.objectPosition = `50% ${Math.round((bike.barTop / bike.height) * 100 + 15)}%`;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = bike.name;
+      const sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = bike.description;
+      card.append(img, name, sub);
+      card.addEventListener('click', () => select(bike.id, true));
+      cards.push(card);
+      picker.append(card);
+    }
+    select(this.cockpit.bikeId, false);
+  }
+
+  private selectGauge?: (id: string) => void;
+
   /** Cards with a live preview of every speedometer face; picking one applies and remembers it. */
   private buildGaugePicker(): void {
     const picker = $('gauge-picker');
     const preview = { speedKmh: 46, leftLamp: true, rightLamp: false, headlight: true, engineOn: true, odometerKm: 128.4 };
     const cards: HTMLButtonElement[] = [];
-    const select = (id: string) => {
+    const select = (this.selectGauge = (id: string) => {
       this.gauge = id;
       this.cockpit.setTheme(id);
       setString('gauge', id);
       for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
-    };
+    });
     for (const theme of GAUGE_THEMES) {
       const card = document.createElement('button');
       card.type = 'button';

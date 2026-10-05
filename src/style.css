@@ -60,12 +60,11 @@ body {
   pointer-events: none;
 }
 
+/* Size comes from the selected bike (src/cockpit/bikes.ts). */
 #cockpit {
   position: absolute;
   left: 0;
   top: 0;
-  width: 1672px;
-  height: 940px;
   transform-origin: 0 0;
 }
 
@@ -78,8 +77,6 @@ body {
 .cockpit-turn img {
   position: absolute;
   inset: 0;
-  width: 1672px;
-  height: 940px;
   pointer-events: none;
 }
 
@@ -389,6 +386,19 @@ body {
 .gauge-card:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+
+.bike-card img {
+  width: 100%;
+  aspect-ratio: 480 / 220;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #0b0d10;
+}
+
+.panel-sub {
+  margin: 14px 0 8px;
+  font-size: 16px;
 }
 
 details.help {
