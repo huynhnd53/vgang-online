@@ -1,57 +1,58 @@
-export type Action = 'interact' | 'camera' | 'rotate' | 'cancel';
+export type Action =
+  | 'horn-down'
+  | 'horn-up'
+  | 'signal-left'
+  | 'signal-right'
+  | 'light'
+  | 'engine'
+  | 'mute';
 
-const MOUSE_SENSITIVITY = 0.0024;
-const TOUCH_SENSITIVITY = 0.0055;
-const JOYSTICK_RADIUS = 56;
+const JOYSTICK_RADIUS = 60;
+const LOOK_SENSITIVITY = 0.005;
 
-/**
- * Collects keyboard/mouse and touch input into one shape the game reads each frame.
- */
+/** Keyboard, mouse-drag look, and a touch joystick (x steers, up = throttle, down = brake). */
 export class Input {
   private keys = new Set<string>();
-  private look = { x: 0, y: 0 };
   private actions: Action[] = [];
   private stick = { x: 0, y: 0 };
   private stickPointer: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private lookPointer: number | null = null;
   private lookLast = { x: 0, y: 0 };
-  /** Set by the game: when false, gameplay keys and look are ignored (menus open). */
-  enabled = true;
+  /** Head turn while dragging; springs back to centre when released. */
+  look = { yaw: 0, pitch: 0 };
   touchMode: boolean;
+  onFirstInput: () => void = () => {};
   onTouchModeChange: (touch: boolean) => void = () => {};
 
   constructor(
-    private canvas: HTMLCanvasElement,
+    surface: HTMLElement,
     private joystickBase: HTMLElement,
     private joystickKnob: HTMLElement,
   ) {
     this.touchMode = window.matchMedia('(pointer: coarse)').matches;
-
     window.addEventListener('keydown', (e) => {
-      if (e.target instanceof HTMLInputElement) return;
+      this.onFirstInput();
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
       if (e.repeat) return;
-      if (e.code === 'KeyE' || e.code === 'Enter') this.push('interact');
-      else if (e.code === 'KeyV') this.push('camera');
-      else if (e.code === 'KeyR') this.push('rotate');
-      else if (e.code === 'KeyQ' || e.code === 'Escape') this.push('cancel');
+      if (e.code === 'KeyH') this.push('horn-down');
+      else if (e.code === 'KeyQ') this.push('signal-left');
+      else if (e.code === 'KeyE') this.push('signal-right');
+      else if (e.code === 'KeyL') this.push('light');
+      else if (e.code === 'KeyK' || e.code === 'Enter') this.push('engine');
+      else if (e.code === 'KeyM') this.push('mute');
     });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('keyup', (e) => {
+      this.keys.delete(e.code);
+      if (e.code === 'KeyH') this.push('horn-up');
+    });
     window.addEventListener('blur', () => this.reset());
 
-    document.addEventListener('mousemove', (e) => {
-      if (document.pointerLockElement !== this.canvas || !this.enabled) return;
-      // Some browsers report one huge jump right after the pointer locks; drop it.
-      if (Math.abs(e.movementX) > 300 || Math.abs(e.movementY) > 300) return;
-      this.look.x += e.movementX * MOUSE_SENSITIVITY;
-      this.look.y += e.movementY * MOUSE_SENSITIVITY;
-    });
-
-    canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-    window.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    window.addEventListener('pointerup', (e) => this.onPointerUp(e));
-    window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+    surface.addEventListener('pointerdown', (e) => this.onDown(e));
+    window.addEventListener('pointermove', (e) => this.onMove(e));
+    window.addEventListener('pointerup', (e) => this.onUp(e));
+    window.addEventListener('pointercancel', (e) => this.onUp(e));
   }
 
   private setTouchMode(touch: boolean) {
@@ -60,15 +61,11 @@ export class Input {
     this.onTouchModeChange(touch);
   }
 
-  private onPointerDown(e: PointerEvent) {
-    if (e.pointerType !== 'touch') {
-      if (e.pointerType === 'mouse') this.setTouchMode(false);
-      return;
-    }
-    this.setTouchMode(true);
-    e.preventDefault();
-    if (!this.enabled) return;
-    if (e.clientX < window.innerWidth * 0.42 && this.stickPointer === null) {
+  private onDown(e: PointerEvent) {
+    this.onFirstInput();
+    this.setTouchMode(e.pointerType === 'touch');
+    if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.45 && this.stickPointer === null) {
+      e.preventDefault();
       this.stickPointer = e.pointerId;
       this.stickOrigin = { x: e.clientX, y: e.clientY };
       this.stick = { x: 0, y: 0 };
@@ -76,13 +73,15 @@ export class Input {
       this.joystickBase.style.top = `${e.clientY}px`;
       this.joystickBase.classList.add('active');
       this.joystickKnob.style.transform = 'translate(-50%, -50%)';
-    } else if (this.lookPointer === null) {
+      return;
+    }
+    if (this.lookPointer === null) {
       this.lookPointer = e.pointerId;
       this.lookLast = { x: e.clientX, y: e.clientY };
     }
   }
 
-  private onPointerMove(e: PointerEvent) {
+  private onMove(e: PointerEvent) {
     if (e.pointerId === this.stickPointer) {
       let dx = e.clientX - this.stickOrigin.x;
       let dy = e.clientY - this.stickOrigin.y;
@@ -94,15 +93,13 @@ export class Input {
       this.stick = { x: dx / JOYSTICK_RADIUS, y: -dy / JOYSTICK_RADIUS };
       this.joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     } else if (e.pointerId === this.lookPointer) {
-      if (this.enabled) {
-        this.look.x += (e.clientX - this.lookLast.x) * TOUCH_SENSITIVITY;
-        this.look.y += (e.clientY - this.lookLast.y) * TOUCH_SENSITIVITY;
-      }
+      this.look.yaw = Math.max(-1.3, Math.min(1.3, this.look.yaw - (e.clientX - this.lookLast.x) * LOOK_SENSITIVITY));
+      this.look.pitch = Math.max(-0.45, Math.min(0.35, this.look.pitch - (e.clientY - this.lookLast.y) * LOOK_SENSITIVITY));
       this.lookLast = { x: e.clientX, y: e.clientY };
     }
   }
 
-  private onPointerUp(e: PointerEvent) {
+  private onUp(e: PointerEvent) {
     if (e.pointerId === this.stickPointer) {
       this.stickPointer = null;
       this.stick = { x: 0, y: 0 };
@@ -112,23 +109,12 @@ export class Input {
     }
   }
 
+  get looking(): boolean {
+    return this.lookPointer !== null;
+  }
+
   push(action: Action): void {
     this.actions.push(action);
-  }
-
-  /** Movement: x = strafe right, y = forward. */
-  movement(): { x: number; y: number } {
-    if (!this.enabled) return { x: 0, y: 0 };
-    const k = this.keys;
-    const x = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
-    const y = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
-    return { x: x + this.stick.x, y: y + this.stick.y };
-  }
-
-  consumeLook(): { x: number; y: number } {
-    const l = this.look;
-    this.look = { x: 0, y: 0 };
-    return l;
   }
 
   consumeActions(): Action[] {
@@ -137,12 +123,34 @@ export class Input {
     return a;
   }
 
+  controls(): { throttle: number; brake: number; steer: number } {
+    const k = this.keys;
+    const kThrottle = k.has('KeyW') || k.has('ArrowUp') ? 1 : 0;
+    const kBrake = k.has('KeyS') || k.has('ArrowDown') || k.has('Space') ? 1 : 0;
+    const kSteer = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
+    const sy = this.stick.y;
+    const dead = (v: number) => (Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85);
+    return {
+      throttle: Math.max(kThrottle, dead(Math.max(0, sy))),
+      brake: Math.max(kBrake, dead(Math.max(0, -sy))),
+      steer: Math.max(-1, Math.min(1, kSteer + dead(this.stick.x))),
+    };
+  }
+
+  /** Eases the head back to centre when nobody is dragging. */
+  relaxLook(dt: number): void {
+    if (this.looking) return;
+    const k = Math.min(1, dt * 3);
+    this.look.yaw -= this.look.yaw * k;
+    this.look.pitch -= this.look.pitch * k;
+  }
+
   reset(): void {
     this.keys.clear();
+    if (this.actions.length === 0 || this.actions[this.actions.length - 1] !== 'horn-up') this.push('horn-up');
     this.stick = { x: 0, y: 0 };
     this.stickPointer = null;
     this.lookPointer = null;
-    this.look = { x: 0, y: 0 };
     this.joystickBase.classList.remove('active');
   }
 }

@@ -10,52 +10,52 @@
   <body>
     <div id="app">
       <canvas id="scene"></canvas>
+      <div id="loading">Đang dựng phố đêm…</div>
+      <div id="cockpit-layer"></div>
 
       <div id="hud">
         <div class="hud-left">
-          <div class="chip" id="money">Tiền: 0</div>
-          <div class="chip" id="where">Nhà</div>
-          <div class="chip hidden" id="shift"></div>
-        </div>
-        <div class="hud-right">
-          <button class="btn" id="btn-catalog" type="button">Danh mục</button>
-          <button class="btn" id="btn-inventory" type="button">Đồ của tôi</button>
-          <button class="btn" id="btn-camera" type="button" title="Đổi góc nhìn (V)">Góc nhìn</button>
+          <div class="chip" id="place">Dạo phố</div>
+          <button class="btn" id="btn-mute" type="button">Âm thanh: bật</button>
           <button class="btn" id="btn-help" type="button" aria-label="Hướng dẫn">?</button>
         </div>
+        <canvas id="minimap" width="150" height="150" aria-label="Bản đồ"></canvas>
       </div>
 
-      <div id="objective" class="hidden"></div>
-      <div id="crosshair" class="hidden"></div>
       <div id="prompt" class="hidden"></div>
       <div id="toasts"></div>
 
       <div id="touch" class="hidden">
         <div id="joystick"><div id="joystick-knob"></div></div>
         <div class="touch-buttons">
-          <button class="tbtn hidden" id="t-cancel" type="button">Hủy</button>
-          <button class="tbtn hidden" id="t-rotate" type="button">Xoay</button>
-          <button class="tbtn primary" id="t-interact" type="button">Dùng</button>
+          <button class="tbtn" id="t-signal-left" type="button" aria-label="Xi nhan trái">◀</button>
+          <button class="tbtn" id="t-horn" type="button">Còi</button>
+          <button class="tbtn" id="t-signal-right" type="button" aria-label="Xi nhan phải">▶</button>
+          <button class="tbtn" id="t-light" type="button">Đèn</button>
+          <button class="tbtn primary" id="t-engine" type="button">Đề</button>
         </div>
       </div>
 
-      <div id="lock-hint" class="hidden">Nhấp chuột vào màn hình để điều khiển</div>
       <div id="rotate-hint" class="hidden">
-        <span>Xoay ngang điện thoại để chơi thoải mái hơn</span>
+        <span>Xoay ngang điện thoại để lái thoải mái hơn</span>
         <button class="btn" id="rotate-dismiss" type="button">Vẫn chơi dọc</button>
       </div>
 
-      <div id="panel" class="hidden" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+      <div id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
         <div class="panel-card">
           <div class="panel-head">
-            <h2 id="panel-title"></h2>
-            <button class="btn" id="panel-close" type="button">Đóng</button>
+            <h2 id="panel-title">Lái xe dạo phố</h2>
+            <button class="btn" id="panel-close" type="button">Lên xe</button>
           </div>
-          <div id="panel-body"></div>
+          <ul class="help-list">
+            <li>Nổ máy rồi thong thả chạy quanh phố. Không có điểm số, không có thời gian.</li>
+            <li><b>Máy tính:</b> W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái. K nổ máy, H bóp còi, Q E xi nhan, L bật đèn, M tắt tiếng. Kéo chuột để quay đầu nhìn.</li>
+            <li><b>Điện thoại:</b> kéo nửa trái màn hình: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái. Vuốt nửa phải để nhìn quanh.</li>
+            <li>Có thể bấm thẳng vào nút trên tay lái: còi, đèn, xi nhan và nút đề.</li>
+            <li>Quãng đường và vị trí được lưu trên trình duyệt này.</li>
+          </ul>
         </div>
       </div>
-
-      <div id="fade"></div>
     </div>
     <script type="module" src="./src/main.ts"></script>
   </body>

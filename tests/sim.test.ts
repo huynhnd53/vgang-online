@@ -1,0 +1,97 @@
+import { describe, expect, it } from 'vitest';
+import { generateCity, ROAD } from '../src/sim/city';
+import { circleHitsRect, pointInRect, rectsOverlapForTest } from './helpers';
+import { MAX_SPEED, type ScooterState, SCOOTER_RADIUS, stepScooter } from '../src/sim/scooter';
+
+const city = generateCity();
+const open = { x: 0, z: 0, w: 1e4, d: 1e4 };
+
+function run(s: ScooterState, c: { throttle: number; brake: number; steer: number }, seconds: number, colliders = city.colliders, bounds = city.bounds) {
+  for (let t = 0; t < seconds; t += 1 / 60) s = stepScooter(s, c, 1 / 60, true, colliders, bounds).state;
+  return s;
+}
+
+const start = (): ScooterState => ({ x: 0, z: 0, heading: 0, speed: 0, steer: 0 });
+
+describe('scooter', () => {
+  it('accelerates towards but never past the top speed', () => {
+    const s = run(start(), { throttle: 1, brake: 0, steer: 0 }, 30, [], open);
+    expect(s.speed).toBeGreaterThan(MAX_SPEED * 0.8);
+    expect(s.speed).toBeLessThanOrEqual(MAX_SPEED);
+    expect(s.z).toBeLessThan(0);
+    expect(Math.abs(s.x)).toBeLessThan(1e-6);
+  });
+
+  it('does not move with the engine off', () => {
+    let s = start();
+    for (let k = 0; k < 120; k++) s = stepScooter(s, { throttle: 1, brake: 0, steer: 0 }, 1 / 60, false, [], open).state;
+    expect(s.speed).toBe(0);
+  });
+
+  it('brakes to a stop', () => {
+    let s = run(start(), { throttle: 1, brake: 0, steer: 0 }, 8, [], open);
+    s = run(s, { throttle: 0, brake: 1, steer: 0 }, 3, [], open);
+    expect(s.speed).toBeLessThanOrEqual(0);
+    expect(s.speed).toBeGreaterThan(-1.3);
+  });
+
+  it('turns right when steering right', () => {
+    const s = run(start(), { throttle: 0.6, brake: 0, steer: 1 }, 3, [], open);
+    expect(s.heading).toBeLessThan(0);
+    expect(s.x).toBeGreaterThan(0);
+  });
+
+  it('stops at a wall instead of passing through it', () => {
+    const wall = { x: 0, z: -20, w: 40, d: 1 };
+    const s = run(start(), { throttle: 1, brake: 0, steer: 0 }, 10, [wall], open);
+    expect(s.z).toBeGreaterThan(-20 + 0.5);
+    expect(circleHitsRect(s.x, s.z, SCOOTER_RADIUS, wall)).toBe(false);
+  });
+});
+
+describe('city', () => {
+  it('is deterministic', () => {
+    expect(generateCity()).toEqual(generateCity());
+  });
+
+  it('spawns on a road, clear of every block', () => {
+    const { spawn } = city;
+    for (const c of city.colliders) expect(circleHitsRect(spawn.x, spawn.z, SCOOTER_RADIUS + 1, c)).toBe(false);
+    expect(pointInRect(spawn.x, spawn.z, city.bounds)).toBe(true);
+    expect(city.roads.some((r) => Math.abs(spawn.x - r) <= ROAD / 2)).toBe(true);
+  });
+
+  it('keeps houses inside their block and apart from each other', () => {
+    for (const b of city.blocks) {
+      for (const lot of b.lots) {
+        expect(Math.abs(lot.rect.x - b.inner.x) + lot.rect.w / 2).toBeLessThanOrEqual(b.inner.w / 2 + 1e-6);
+        expect(Math.abs(lot.rect.z - b.inner.z) + lot.rect.d / 2).toBeLessThanOrEqual(b.inner.d / 2 + 1e-6);
+      }
+      for (let a = 0; a < b.lots.length; a++)
+        for (let c = a + 1; c < b.lots.length; c++) expect(rectsOverlapForTest(b.lots[a].rect, b.lots[c].rect)).toBe(false);
+    }
+  });
+
+  it('lets the scooter ride a full lap of the outer ring road', () => {
+    const { roads, bounds } = city;
+    const lo = roads[0];
+    const hi = roads[roads.length - 1];
+    // Drive the four sides of the ring by teleporting between corners along straight roads.
+    const corners = [
+      [lo, hi],
+      [lo, lo],
+      [hi, lo],
+      [hi, hi],
+    ];
+    for (let k = 0; k < 4; k++) {
+      const [ax, az] = corners[k];
+      const [bx, bz] = corners[(k + 1) % 4];
+      for (let t = 0; t <= 1; t += 0.01) {
+        const x = ax + (bx - ax) * t;
+        const z = az + (bz - az) * t;
+        expect(city.colliders.some((c) => circleHitsRect(x, z, SCOOTER_RADIUS, c))).toBe(false);
+        expect(pointInRect(x, z, bounds)).toBe(true);
+      }
+    }
+  });
+});
