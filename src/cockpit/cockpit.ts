@@ -98,7 +98,7 @@ export class Cockpit {
     this.vw = vw;
     this.vh = vh;
     const b = this.bike;
-    const scale = Math.max(vw / (b.width - 80), 0.2);
+    const scale = Math.max(vw / (b.width * (b.fit ?? 0.95)), 0.05);
     // Show the bar, dial and grips; let the lower column fall off-screen on short screens.
     const [lo, hi] = b.visibleBottom;
     const visibleBottom = Math.max(lo, Math.min(hi, b.barTop + (vh * 0.44) / scale));

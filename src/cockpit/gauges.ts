@@ -23,6 +23,11 @@ export interface GaugeTheme {
   name: string;
   description: string;
   draw(ctx: CanvasRenderingContext2D, v: GaugeView): void;
+  /**
+   * LCD faces: the screen outline inside the 480 × 220 design space. When a bike's photo has an LCD,
+   * this box is stretched onto the photo's screen so only the display itself is redrawn.
+   */
+  panel?: { box: { x: number; y: number; w: number; h: number }; path(ctx: CanvasRenderingContext2D): void };
 }
 
 type Ctx = CanvasRenderingContext2D;
@@ -301,6 +306,10 @@ const REAL_FACES: GaugeTheme[] = [
     id: 'lcd-blue',
     name: 'LCD xanh dương',
     description: 'Màn xanh phát sáng, số trắng, thanh vòng tua',
+    panel: {
+      box: { x: 96, y: 52, w: 288, h: 132 },
+      path: (ctx) => panelPath(ctx, [[96, 52], [384, 52], [366, 184], [114, 184]], 12),
+    },
     draw(ctx, v) {
       fillLens(ctx, '#15181c', '#07080a');
       panelPath(ctx, [[96, 52], [384, 52], [366, 184], [114, 184]], 14);
@@ -387,6 +396,10 @@ const REAL_FACES: GaugeTheme[] = [
     id: 'lcd-grey',
     name: 'LCD xám',
     description: 'Màn xám, số đen, kiểu tay ga đời mới',
+    panel: {
+      box: { x: 90, y: 64, w: 300, h: 112 },
+      path: (ctx) => panelPath(ctx, [[90, 64], [390, 64], [372, 176], [108, 176]], 12),
+    },
     draw(ctx, v) {
       fillLens(ctx, '#2a2e33', '#111316');
       panelPath(ctx, [[90, 64], [390, 64], [372, 176], [108, 176]], 12);
@@ -450,6 +463,10 @@ const REAL_FACES: GaugeTheme[] = [
     id: 'lcd-mono',
     name: 'LCD thể thao',
     description: 'Màn đen trắng, số to, báo số, vòng tua dạng vòng cung',
+    panel: {
+      box: { x: 100, y: 50, w: 284, h: 130 },
+      path: (ctx) => panelPath(ctx, [[110, 60], [356, 50], [384, 112], [356, 180], [124, 180], [100, 120]], 12),
+    },
     draw(ctx, v) {
       fillLens(ctx, '#121315', '#040405');
       panelPath(ctx, [[110, 60], [356, 50], [384, 112], [356, 180], [124, 180], [100, 120]], 12);
@@ -700,20 +717,56 @@ export function gaugeTheme(id: string): GaugeTheme {
   return GAUGE_THEMES.find((t) => t.id === id) ?? GAUGE_THEMES.find((t) => t.id === DEFAULT_GAUGE)!;
 }
 
+export type GaugeClip = 'ellipse' | 'rect' | 'panel';
+
+/** Small turn-signal and high-beam marks inside an LCD screen (the face's own lamps sit outside it). */
+function screenLamps(ctx: Ctx, v: GaugeView, box: { x: number; y: number; w: number; h: number }) {
+  const s = box.h / 6;
+  const arrow = (cx: number, dir: -1 | 1, lit: boolean) => {
+    ctx.fillStyle = lit ? '#3ee86f' : 'rgba(62,232,111,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(cx + dir * s * 0.7, box.y + s);
+    ctx.lineTo(cx - dir * s * 0.3, box.y + s * 0.45);
+    ctx.lineTo(cx - dir * s * 0.3, box.y + s * 1.55);
+    ctx.closePath();
+    ctx.fill();
+  };
+  arrow(box.x + s * 1.1, -1, v.leftLamp);
+  arrow(box.x + box.w - s * 1.1, 1, v.rightLamp);
+  ctx.fillStyle = v.headlight ? '#4d8dff' : 'rgba(77,141,255,0.12)';
+  ctx.fillRect(box.x + s * 2, box.y + s * 0.65, s * 0.7, s * 0.7);
+}
+
 /**
- * Draws a face into a canvas of any size (live gauge or a preview). Faces are designed in a 480 × 220 space,
- * stretched to the canvas, and clipped to the oval dial glass or a rounded LCD rectangle.
+ * Draws a face into a canvas of any size (live gauge or a preview). Faces are designed in a 480 × 220 space.
+ * - 'ellipse' / 'rect': the whole design is stretched to the canvas and clipped to an oval dial or rounded box.
+ * - 'panel' / 'rect' with an LCD face: only the face's screen box is stretched to the canvas, so it fits a
+ *   photo's LCD exactly ('panel' keeps the face's outline, 'rect' clips to the rectangle).
  */
-export function drawGauge(canvas: HTMLCanvasElement, theme: GaugeTheme, v: GaugeView, clip: 'ellipse' | 'rect' = 'ellipse'): void {
+export function drawGauge(canvas: HTMLCanvasElement, theme: GaugeTheme, v: GaugeView, clip: GaugeClip = 'ellipse'): void {
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(canvas.width / GAUGE_W, 0, 0, canvas.height / GAUGE_H, 0, 0);
+  const panel = clip !== 'ellipse' ? theme.panel : undefined;
   ctx.save();
-  ctx.beginPath();
-  if (clip === 'ellipse') ctx.ellipse(LENS.x, LENS.y, LENS.rx, LENS.ry, 0, 0, Math.PI * 2);
-  else ctx.roundRect(4, 4, GAUGE_W - 8, GAUGE_H - 8, 18);
-  ctx.clip();
-  theme.draw(ctx, v);
+  if (panel) {
+    const b = panel.box;
+    const sx = canvas.width / b.w;
+    const sy = canvas.height / b.h;
+    ctx.setTransform(sx, 0, 0, sy, -b.x * sx, -b.y * sy);
+    ctx.beginPath();
+    if (clip === 'panel') panel.path(ctx);
+    else ctx.roundRect(b.x, b.y, b.w, b.h, 10);
+    ctx.clip();
+    theme.draw(ctx, v);
+    screenLamps(ctx, v, b);
+  } else {
+    ctx.setTransform(canvas.width / GAUGE_W, 0, 0, canvas.height / GAUGE_H, 0, 0);
+    ctx.beginPath();
+    if (clip === 'ellipse') ctx.ellipse(LENS.x, LENS.y, LENS.rx, LENS.ry, 0, 0, Math.PI * 2);
+    else ctx.roundRect(4, 4, GAUGE_W - 8, GAUGE_H - 8, 18);
+    ctx.clip();
+    theme.draw(ctx, v);
+  }
   ctx.restore();
 }

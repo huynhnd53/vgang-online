@@ -11,7 +11,7 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
   Vuốt nửa phải để nhìn. Các nút Còi, xi nhan, Đèn, Đề ở góc phải. Nên xoay ngang.
 - Có thể bấm thẳng vào công tắc trên ảnh tay lái: đèn, còi, xi nhan, nút đề ⚡.
-- Khi vào game, chọn xe (đầu xe) và mặt đồng hồ; đổi lại bất cứ lúc nào bằng nút *Đổi xe*.
+- Khi vào game, chọn một trong 6 đầu xe (tay ga đỏ, tay ga LCD xanh, xe số kim cam, tay ga trắng, xe số mặt trắng, côn tay đen) và mặt đồng hồ; đổi lại bất cứ lúc nào bằng nút *Đổi xe*.
 - Xi nhan tự tắt sau khi rẽ xong. Đứng yên giữ phanh để dắt lùi xe.
 
 Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu trong `localStorage` của từng trình duyệt.
