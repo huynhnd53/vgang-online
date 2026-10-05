@@ -28,28 +28,27 @@ Cấu trúc:
 
 - `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định, gồm loại tầng trệt,
   cửa sổ từng tầng, mái hiên, biển hiệu). Có test trong `tests/`.
-- `src/world/night/` — phố đêm bằng Three.js, không dùng ảnh hay model ngoài:
-  - `surfaces.ts`, `facade.ts` — texture tự sinh (nhựa đường, gạch vỉa hè, bó vỉa, vữa tường cũ, cửa cuốn,
-    cửa xếp, tiệm sáng đèn, cửa sổ chớp, ban công, lá cây, mái hiên, biển hiệu).
-  - `houses.ts`, `streets.ts` — nhà ống theo tầng và gian, gờ tầng, ban công, mái hiên; đường, vạch sơn,
-    cột đèn natri, cây, chậu cây, đèn giao thông, dây điện, hồ, công viên, quảng trường.
-  - `lighting.ts` — hàng trăm nguồn sáng: các đèn gần nhất được tính trong shader của mọi vật liệu,
-    vài đèn gần xe là SpotLight thật (đổ bóng, phản chiếu trên mặt đường ướt), cộng quầng sáng và vệt phản chiếu.
-  - `post.ts` — bloom, tối viền, hạt phim.
+- `src/world/night/` — phố đêm, giữ đơn giản để chạy mượt:
+  - `facade.ts`, `surfaces.ts` — texture tự sinh cho mặt tiền nhà, nhựa đường, gạch vỉa hè, bó vỉa, mái hiên.
+  - `houses.ts` — nhà ống theo tầng và gian, ban công, mái hiên, biển hiệu, cửa sổ sáng đèn.
+  - `bake.ts` — ánh đèn đường được tính sẵn một lần khi tải vào màu đỉnh, nên lúc chạy không cần tính ánh sáng.
+  - `billboards.ts` — vẽ ảnh asset (cột đèn, đèn giao thông, ghế, bồn cây, cọc) thành tấm luôn quay về
+    phía người lái, mỗi loại một lần vẽ.
+  - `simpleCity.ts` — ghép tất cả: đường, vỉa hè, vạch sơn, nhà, đồ đường phố, hồ, công viên, đèn pha xe.
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.
 - `src/input/`, `src/ui/` — điều khiển bàn phím/chuột/cảm ứng và bản đồ nhỏ.
 
-### Chất lượng hình ảnh
-
-Game tự chọn mức chất lượng (điện thoại và máy yếu: ít đèn hơn, không đổ bóng, không khử răng cưa) và tự giảm
-độ phân giải khi khung hình tụt. Có thể ép bằng tham số `?quality=low` hoặc `?quality=high` trên địa chỉ trang.
+Game tự giảm độ phân giải khi khung hình tụt.
 
 ### Thay asset
 
 - Ảnh tay lái: `public/assets/handlebar.webp` (1672×940, nền trong suốt). Nếu đổi ảnh khác kích thước,
   sửa các hằng số `IMG_W`, `IMG_H`, `BAR_TOP`, `GAUGE` và `HOTSPOTS` trong `src/cockpit/cockpit.ts`.
+- Đồ đường phố: `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
+  trong suốt, đã cắt sát vật). Kích thước ngoài đời và điểm chạm đất của từng ảnh nằm ở đầu
+  `src/world/night/simpleCity.ts` (`LAMP`, `TRAFFIC`, `BENCH`, `PLANTER`, `CONE`).
 
 ## Phát hành
 

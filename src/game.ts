@@ -6,8 +6,7 @@ import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
 import { type Block, type City, generateCity } from './sim/city';
 import { MAX_SPEED, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
-import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/nightCity';
-import { PostFX } from './world/night/post';
+import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/simpleCity';
 
 const EYE_HEIGHT = 1.35;
 const SAVE_INTERVAL = 2;
@@ -53,10 +52,7 @@ export class Game {
   private shake = 0;
   private hornHeld = false;
   private hornDownAt = 0;
-  private headlamp: THREE.SpotLight;
   private night: NightCity;
-  private post: PostFX;
-  private lowEnd: boolean;
   private cockpitLight = -1;
   private landmark: Block | null = null;
   private throttle = 0;
@@ -77,41 +73,21 @@ export class Game {
     this.headlight = saved.headlight;
     this.sound.setMuted(saved.muted);
 
-    // Phones and small screens get fewer per-pixel lights, no shadows and a lower render scale.
-    // ?quality=low|high overrides the automatic choice.
-    const forced = new URLSearchParams(location.search).get('quality');
-    this.lowEnd =
-      forced === 'low' || forced === 'high'
-        ? forced === 'low'
-        : window.matchMedia('(pointer: coarse)').matches ||
-          Math.min(window.innerWidth, window.innerHeight) < 500 ||
-          ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
-    const quality = this.lowEnd
-      ? { fakeLights: 20, realLights: 2, shadows: 0 }
-      : { fakeLights: 32, realLights: 6, shadows: 2 };
-
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    // Everything is unlit (light is baked into vertex colours at load), so this runs on modest GPUs too.
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.shadowMap.enabled = quality.shadows > 0;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.scene.background = new THREE.Color(0x000000);
     this.scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
-    // Faint moonlit sky fill so unlit surfaces are not pure black.
-    this.scene.add(new THREE.HemisphereLight(0x22304a, 0x0c0906, 0.6));
-    this.night = buildNightCity(this.city, quality);
+    this.night = buildNightCity(this.city, `${import.meta.env.BASE_URL}assets/`);
     this.scene.add(this.night.group);
 
     this.camera.rotation.order = 'YXZ';
     this.camera.far = 1000;
     this.camera.updateProjectionMatrix();
-    // Headlight follows the scooter, not the rider's head.
-    this.headlamp = new THREE.SpotLight(0xffe2b8, 0, 50, 0.42, 0.5, 1.6);
-    this.scene.add(this.headlamp, this.headlamp.target);
     this.scene.add(this.camera);
-    this.post = new PostFX(this.renderer, this.scene, this.camera, this.lowEnd);
 
     this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
     $('cockpit-layer').append(this.cockpit.root);
@@ -139,7 +115,7 @@ export class Game {
   }
 
   private pixelRatio(): number {
-    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, this.lowEnd ? 1.25 : 1.5) * this.renderScale);
+    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, 1.5) * this.renderScale);
   }
 
   /** Dynamic resolution: trade sharpness for a steady frame rate on slower GPUs. */
@@ -164,7 +140,6 @@ export class Game {
       const pr = this.pixelRatio();
       this.renderer.setPixelRatio(pr);
       this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-      this.post.setSize(window.innerWidth, window.innerHeight, pr);
     }
   }
 
@@ -305,7 +280,6 @@ export class Game {
     const h = window.innerHeight;
     this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.setSize(w, h, false);
-    this.post?.setSize(w, h, this.pixelRatio());
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.cockpit.layout(w, h);
@@ -390,15 +364,12 @@ export class Game {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
-    const fx = -Math.sin(s.heading);
-    const fz = -Math.cos(s.heading);
-    this.headlamp.position.set(s.x + fx * 0.6, 1.05, s.z + fz * 0.6);
-    this.headlamp.target.position.set(s.x + fx * 14, 0, s.z + fz * 14);
-    this.headlamp.intensity = this.headlight ? 150 : 0;
+    this.night.headlight.visible = this.headlight;
+    this.night.headlight.position.set(s.x, 0.02, s.z);
+    this.night.headlight.rotation.y = s.heading;
 
-    this.night.update(this.elapsed, this.camera);
     // The cockpit photo is day-lit; darken it to match the street light around the rider.
-    const level = Math.round((0.3 + this.night.lighting.levelAt(s.x, s.z) * 0.6) * 50) / 50;
+    const level = Math.round((0.3 + this.night.levelAt(s.x, s.z) * 0.6) * 50) / 50;
     if (level !== this.cockpitLight) {
       this.cockpitLight = level;
       this.cockpit.setLighting(level);
@@ -422,7 +393,7 @@ export class Game {
       this.persist();
     }
 
-    this.post.render(this.elapsed);
+    this.renderer.render(this.scene, this.camera);
     this.adaptResolution(frameTime);
   }
 }
