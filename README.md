@@ -1,6 +1,6 @@
 # Vgang Online
 
-Game web 3D lái xe máy dạo phố, nhìn từ góc người lái. Thong thả chạy quanh khu phố, không điểm số, không thời gian.
+Game web 3D lái xe máy dạo phố về đêm, nhìn từ góc người lái. Thong thả chạy quanh khu phố, không điểm số, không thời gian.
 
 Bản chơi: https://huynhnd53.github.io/vgang-online/
 
@@ -26,11 +26,25 @@ npm run build    # build ra thư mục dist/
 
 Cấu trúc:
 
-- `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định). Có test trong `tests/`.
-- `src/world/` — dựng khu phố bằng Three.js: nhà ống, vỉa hè, cây, đèn đường, vạch kẻ, hồ, công viên, quảng trường.
-- `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp`, đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
+- `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định, gồm loại tầng trệt,
+  cửa sổ từng tầng, mái hiên, biển hiệu). Có test trong `tests/`.
+- `src/world/night/` — phố đêm bằng Three.js, không dùng ảnh hay model ngoài:
+  - `surfaces.ts`, `facade.ts` — texture tự sinh (nhựa đường, gạch vỉa hè, bó vỉa, vữa tường cũ, cửa cuốn,
+    cửa xếp, tiệm sáng đèn, cửa sổ chớp, ban công, lá cây, mái hiên, biển hiệu).
+  - `houses.ts`, `streets.ts` — nhà ống theo tầng và gian, gờ tầng, ban công, mái hiên; đường, vạch sơn,
+    cột đèn natri, cây, chậu cây, đèn giao thông, dây điện, hồ, công viên, quảng trường.
+  - `lighting.ts` — hàng trăm nguồn sáng: các đèn gần nhất được tính trong shader của mọi vật liệu,
+    vài đèn gần xe là SpotLight thật (đổ bóng, phản chiếu trên mặt đường ướt), cộng quầng sáng và vệt phản chiếu.
+  - `post.ts` — bloom, tối viền, hạt phim.
+- `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
+  đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.
 - `src/input/`, `src/ui/` — điều khiển bàn phím/chuột/cảm ứng và bản đồ nhỏ.
+
+### Chất lượng hình ảnh
+
+Game tự chọn mức chất lượng (điện thoại và máy yếu: ít đèn hơn, không đổ bóng, không khử răng cưa) và tự giảm
+độ phân giải khi khung hình tụt. Có thể ép bằng tham số `?quality=low` hoặc `?quality=high` trên địa chỉ trang.
 
 ### Thay asset
 

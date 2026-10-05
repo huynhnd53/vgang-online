@@ -11,16 +11,41 @@ export const HALF = (GRID * PITCH) / 2;
 
 export type BlockKind = 'houses' | 'park' | 'lake' | 'plaza';
 
+/** Ground-floor look, indexes row 0 of the facade atlas. */
+export const GROUND_KINDS = 8;
+/** Upper-floor look, indexes row 1 of the facade atlas. */
+export const UPPER_KINDS = 8;
+export const GROUND_FLOOR_H = 3.8;
+export const UPPER_FLOOR_H = 3.4;
+
 export interface Lot {
   rect: Rect;
+  /** Number of storeys including the ground floor. */
+  floors: number;
   height: number;
+  /** Wall tint (multiplies the facade texture). */
   color: number;
-  /** Which facade texture variant to use. */
-  style: number;
   /** Side of the block the front faces: +x, -x, +z or -z. */
   facing: 'px' | 'nx' | 'pz' | 'nz';
+  /** Ground floor variant; see LIT_GROUND for which ones are open shops. */
+  ground: number;
+  /** One variant per upper floor and bay, row-major from the first floor up. */
+  upper: number[];
+  bays: number;
+  /** Awning variant, or null. */
   awning: number | null;
+  /** Shop sign variant, or null. */
+  sign: number | null;
 }
+
+/** Ground variants that are lit, open shops (they light the sidewalk). */
+export const LIT_GROUND = new Set([3, 4, 5, 7]);
+/** Ground variant with a warm lamp over a house door. */
+export const DOOR_LAMP_GROUND = 6;
+/** Upper variants with lit windows. */
+export const LIT_UPPER = new Set([3, 5, 6]);
+/** Upper variants with a balcony slab and railing. */
+export const BALCONY_UPPER = new Set([4, 5]);
 
 export interface Block {
   i: number;
@@ -35,6 +60,8 @@ export interface Block {
 
 export interface City {
   blocks: Block[];
+  /** Houses lining the outside of the ring road, facing inwards. */
+  outerLots: Lot[];
   /** Road centre lines (same values for x and z). */
   roads: number[];
   /** Solid areas the scooter cannot enter. */
@@ -44,8 +71,8 @@ export interface City {
   spawn: { x: number; z: number; heading: number };
 }
 
-const HOUSE_COLORS = [0xf2d16b, 0xe8a7a0, 0x9fc5e8, 0xb6d7a8, 0xf6b26b, 0xf3efe6, 0xd9c2a6, 0xc9b3e6, 0x8fd3c7];
-const AWNING_COLORS = [0xd9534f, 0x2f8f6f, 0x3b7dd8, 0xf0ad4e, 0x7d5ba6];
+/** Weathered stucco tints seen on old street houses at night. */
+const HOUSE_COLORS = [0xf2e8d5, 0xe9dcc0, 0xdfe3d6, 0xd9d4c8, 0xeadbb8, 0xd6dccf, 0xe6d3c3, 0xcfd6d8, 0xf0e2c6];
 
 /** Special blocks give the city a few landmarks to ride to. */
 function kindFor(i: number, j: number): BlockKind {
@@ -55,38 +82,67 @@ function kindFor(i: number, j: number): BlockKind {
   return 'houses';
 }
 
+function lotMaker(rand: () => number) {
+  const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)];
+
+  return (rect: Rect, facing: Lot['facing']): Lot => {
+    const r = rand();
+    const floors = r < 0.15 ? 2 : r < 0.6 ? 3 : r < 0.9 ? 4 : 5;
+    const front = facing === 'px' || facing === 'nx' ? rect.d : rect.w;
+    const bays = Math.max(1, Math.round(front / 4.2));
+    // Most shops are shuttered at night; a few stay open.
+    const g = rand();
+    const ground = g < 0.42 ? Math.floor(rand() * 2) : g < 0.6 ? 2 : g < 0.78 ? 6 : [3, 4, 5, 7][Math.floor(rand() * 4)];
+    const upper: number[] = [];
+    for (let f = 1; f < floors; f++) {
+      const balconyFloor = rand() < 0.35;
+      for (let b = 0; b < bays; b++) {
+        const lit = rand() < 0.16;
+        if (balconyFloor) upper.push(lit ? 5 : 4);
+        else upper.push(lit ? (rand() < 0.7 ? 3 : 6) : pick([0, 1, 2, 2, 7]));
+      }
+    }
+    const shop = LIT_GROUND.has(ground);
+    return {
+      rect,
+      facing,
+      floors,
+      height: GROUND_FLOOR_H + (floors - 1) * UPPER_FLOOR_H,
+      color: pick(HOUSE_COLORS),
+      ground,
+      upper,
+      bays,
+      awning: shop || rand() < 0.25 ? Math.floor(rand() * 4) : null,
+      sign: shop ? Math.floor(rand() * 8) : null,
+    };
+  };
+}
+
+/** Lays narrow lots side by side from `from` to `to`, each at least 3.5 m wide. */
+function row(rand: () => number, from: number, to: number, place: (a: number, b: number) => Lot, out: Lot[]) {
+  let a = from;
+  while (to - a > 3.5) {
+    let w = 4 + rand() * 4;
+    if (to - a - w < 3.5) w = to - a;
+    out.push(place(a, a + w));
+    a += w;
+  }
+}
+
 function buildHouses(inner: Rect, rand: () => number): Lot[] {
   const lots: Lot[] = [];
+  const make = lotMaker(rand);
   const x0 = inner.x - inner.w / 2;
   const x1 = inner.x + inner.w / 2;
   const z0 = inner.z - inner.d / 2;
   const z1 = inner.z + inner.d / 2;
-  const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)];
-
-  const make = (rect: Rect, facing: Lot['facing']): Lot => ({
-    rect,
-    facing,
-    height: 7 + Math.floor(rand() * 5) * 3.2 + (rand() < 0.12 ? 12 : 0),
-    color: pick(HOUSE_COLORS),
-    style: Math.floor(rand() * 3),
-    awning: rand() < 0.55 ? pick(AWNING_COLORS) : null,
-  });
 
   // Narrow "nhà ống" tube houses along each street front; corners are owned by the x-facing rows.
   const depth = 14;
-  const row = (from: number, to: number, place: (a: number, b: number) => Lot) => {
-    let a = from;
-    while (to - a > 3.5) {
-      let w = 4 + rand() * 4;
-      if (to - a - w < 3.5) w = to - a;
-      lots.push(place(a, a + w));
-      a += w;
-    }
-  };
-  row(x0, x1, (a, b) => make({ x: (a + b) / 2, z: z0 + depth / 2, w: b - a, d: depth }, 'nz'));
-  row(x0, x1, (a, b) => make({ x: (a + b) / 2, z: z1 - depth / 2, w: b - a, d: depth }, 'pz'));
-  row(z0 + depth, z1 - depth, (a, b) => make({ x: x0 + depth / 2, z: (a + b) / 2, w: depth, d: b - a }, 'nx'));
-  row(z0 + depth, z1 - depth, (a, b) => make({ x: x1 - depth / 2, z: (a + b) / 2, w: depth, d: b - a }, 'px'));
+  row(rand, x0, x1, (a, b) => make({ x: (a + b) / 2, z: z0 + depth / 2, w: b - a, d: depth }, 'nz'), lots);
+  row(rand, x0, x1, (a, b) => make({ x: (a + b) / 2, z: z1 - depth / 2, w: b - a, d: depth }, 'pz'), lots);
+  row(rand, z0 + depth, z1 - depth, (a, b) => make({ x: x0 + depth / 2, z: (a + b) / 2, w: depth, d: b - a }, 'nx'), lots);
+  row(rand, z0 + depth, z1 - depth, (a, b) => make({ x: x1 - depth / 2, z: (a + b) / 2, w: depth, d: b - a }, 'px'), lots);
   return lots;
 }
 
@@ -108,8 +164,19 @@ export function generateCity(seed = 20261005): City {
   }
 
   const edge = HALF + ROAD / 2;
+  // Outer houses stand behind a sidewalk on the far side of the ring road.
+  const outerLots: Lot[] = [];
+  const make = lotMaker(rand);
+  const d = 14;
+  const near = edge + SIDEWALK;
+  const span = edge + SIDEWALK + d;
+  row(rand, -span, span, (a, b) => make({ x: (a + b) / 2, z: -near - d / 2, w: b - a, d }, 'pz'), outerLots);
+  row(rand, -span, span, (a, b) => make({ x: (a + b) / 2, z: near + d / 2, w: b - a, d }, 'nz'), outerLots);
+  row(rand, -near, near, (a, b) => make({ x: -near - d / 2, z: (a + b) / 2, w: d, d: b - a }, 'px'), outerLots);
+  row(rand, -near, near, (a, b) => make({ x: near + d / 2, z: (a + b) / 2, w: d, d: b - a }, 'nx'), outerLots);
   return {
     blocks,
+    outerLots,
     roads,
     colliders: blocks.map((b) => b.rect),
     bounds: { x: 0, z: 0, w: edge * 2, d: edge * 2 },

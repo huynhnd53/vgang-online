@@ -3,10 +3,10 @@ import type { City } from '../sim/city';
 const SIZE = 150;
 
 const KIND_COLORS: Record<string, string> = {
-  houses: '#d9cdb8',
-  park: '#7fbf63',
-  lake: '#5aa9d6',
-  plaza: '#efe6d2',
+  houses: '#4a4036',
+  park: '#2f4a2a',
+  lake: '#1d3f5c',
+  plaza: '#6b604f',
 };
 
 /** North-up map of the whole city with the rider as an arrow. */
@@ -24,7 +24,7 @@ export class Minimap {
     this.base.width = this.base.height = SIZE * dpr;
     const b = this.base.getContext('2d')!;
     b.scale(dpr, dpr);
-    b.fillStyle = '#5b6168';
+    b.fillStyle = '#16181c';
     b.fillRect(0, 0, SIZE, SIZE);
     for (const block of city.blocks) {
       const [x, y] = this.toMap(block.rect.x - block.rect.w / 2, block.rect.z - block.rect.d / 2);
@@ -32,7 +32,7 @@ export class Minimap {
       b.fillRect(x, y, block.rect.w * this.scale, block.rect.d * this.scale);
       if (block.kind === 'lake') {
         const [cx, cy] = this.toMap(block.inner.x, block.inner.z);
-        b.fillStyle = '#7fbf63';
+        b.fillStyle = KIND_COLORS.park;
         b.fillRect(cx - (block.inner.w / 2) * this.scale, cy - (block.inner.d / 2) * this.scale, block.inner.w * this.scale, block.inner.d * this.scale);
         b.fillStyle = KIND_COLORS.lake;
         b.beginPath();
@@ -54,7 +54,7 @@ export class Minimap {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-heading);
-    ctx.fillStyle = '#ff4136';
+    ctx.fillStyle = '#ffb347';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath();

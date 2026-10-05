@@ -44,6 +44,7 @@ export class Cockpit {
   private readonly turn = document.createElement('div');
   private readonly canvas = document.createElement('canvas');
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly img: HTMLImageElement;
   private scale = 1;
   private lastKey = '';
   onAction: (action: CockpitAction) => void = () => {};
@@ -52,6 +53,7 @@ export class Cockpit {
     this.root.id = 'cockpit';
     this.turn.className = 'cockpit-turn';
     const img = document.createElement('img');
+    this.img = img;
     img.src = src;
     img.alt = '';
     img.draggable = false;
@@ -111,6 +113,12 @@ export class Cockpit {
       this.canvas.height = h;
       this.lastKey = '';
     }
+  }
+
+  /** Darkens and warms the photo to match the light around the rider (0 = dark, 1 = under a lamp). */
+  setLighting(level: number): void {
+    const b = Math.max(0.15, Math.min(1, level));
+    this.img.style.filter = `brightness(${b.toFixed(2)}) sepia(0.35) saturate(1.15) hue-rotate(-8deg)`;
   }
 
   /** Screen-space height covered by the bars, so other UI can sit above them. */

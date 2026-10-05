@@ -6,7 +6,8 @@ import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
 import { type Block, type City, generateCity } from './sim/city';
 import { MAX_SPEED, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
-import { buildCityMesh } from './world/cityMesh';
+import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/nightCity';
+import { PostFX } from './world/night/post';
 
 const EYE_HEIGHT = 1.35;
 const SAVE_INTERVAL = 2;
@@ -42,6 +43,10 @@ export class Game {
 
   private timer = new THREE.Timer();
   private elapsed = 0;
+  private renderScale = 1;
+  private perfTime = 0;
+  private perfFrames = 0;
+  private fastPeriods = 0;
   private saveTimer = 0;
   private signalHeading = 0;
   private lastBlinkPhase = false;
@@ -49,12 +54,16 @@ export class Game {
   private hornHeld = false;
   private hornDownAt = 0;
   private headlamp: THREE.SpotLight;
+  private night: NightCity;
+  private post: PostFX;
+  private lowEnd: boolean;
+  private cockpitLight = -1;
   private landmark: Block | null = null;
   private throttle = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     const { spawn } = this.city;
-    const saved = loadRide({ odometerKm: 0, x: spawn.x, z: spawn.z, heading: spawn.heading, headlight: false, muted: false });
+    const saved = loadRide({ odometerKm: 0, x: spawn.x, z: spawn.z, heading: spawn.heading, headlight: true, muted: false });
     // A saved position inside a block or off the map (e.g. after a layout change) falls back to the spawn point.
     const b = this.city.bounds;
     const invalid =
@@ -68,25 +77,41 @@ export class Game {
     this.headlight = saved.headlight;
     this.sound.setMuted(saved.muted);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // Phones and small screens get fewer per-pixel lights, no shadows and a lower render scale.
+    // ?quality=low|high overrides the automatic choice.
+    const forced = new URLSearchParams(location.search).get('quality');
+    this.lowEnd =
+      forced === 'low' || forced === 'high'
+        ? forced === 'low'
+        : window.matchMedia('(pointer: coarse)').matches ||
+          Math.min(window.innerWidth, window.innerHeight) < 500 ||
+          ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
+    const quality = this.lowEnd
+      ? { fakeLights: 20, realLights: 2, shadows: 0 }
+      : { fakeLights: 32, realLights: 6, shadows: 2 };
 
-    const sky = new THREE.Color(0xa9d4ef);
-    this.scene.background = sky;
-    this.scene.fog = new THREE.Fog(sky, 70, 260);
-    this.scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x7a6b55, 1.5));
-    const sun = new THREE.DirectionalLight(0xfff1d6, 2.0);
-    sun.position.set(80, 140, 40);
-    this.scene.add(sun);
-    this.scene.add(buildCityMesh(this.city));
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(this.pixelRatio());
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.shadowMap.enabled = quality.shadows > 0;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+
+    this.scene.background = new THREE.Color(0x000000);
+    this.scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
+    // Faint moonlit sky fill so unlit surfaces are not pure black.
+    this.scene.add(new THREE.HemisphereLight(0x22304a, 0x0c0906, 0.6));
+    this.night = buildNightCity(this.city, quality);
+    this.scene.add(this.night.group);
 
     this.camera.rotation.order = 'YXZ';
-    this.headlamp = new THREE.SpotLight(0xfff4d6, 0, 45, 0.45, 0.5, 1.2);
-    this.headlamp.position.set(0, -0.3, 0);
-    this.headlamp.target.position.set(0, -1.2, -10);
-    this.camera.add(this.headlamp, this.headlamp.target);
+    this.camera.far = 1000;
+    this.camera.updateProjectionMatrix();
+    // Headlight follows the scooter, not the rider's head.
+    this.headlamp = new THREE.SpotLight(0xffe2b8, 0, 50, 0.42, 0.5, 1.6);
+    this.scene.add(this.headlamp, this.headlamp.target);
     this.scene.add(this.camera);
+    this.post = new PostFX(this.renderer, this.scene, this.camera, this.lowEnd);
 
     this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
     $('cockpit-layer').append(this.cockpit.root);
@@ -111,6 +136,36 @@ export class Game {
 
     if (getFlag('ride-help-seen')) $('panel').classList.add('hidden');
     this.refreshChrome();
+  }
+
+  private pixelRatio(): number {
+    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, this.lowEnd ? 1.25 : 1.5) * this.renderScale);
+  }
+
+  /** Dynamic resolution: trade sharpness for a steady frame rate on slower GPUs. */
+  private adaptResolution(frameTime: number): void {
+    if (this.elapsed < 3) return;
+    this.perfTime += frameTime;
+    this.perfFrames++;
+    if (this.perfTime < 2) return;
+    const avg = this.perfTime / this.perfFrames;
+    this.perfTime = 0;
+    this.perfFrames = 0;
+    let next = this.renderScale;
+    if (avg > 0.026) {
+      next = Math.max(0.5, this.renderScale - 0.15);
+      this.fastPeriods = 0;
+    } else if (avg < 0.0175 && ++this.fastPeriods >= 2) {
+      next = Math.min(1, this.renderScale + 0.1);
+      this.fastPeriods = 0;
+    }
+    if (next !== this.renderScale) {
+      this.renderScale = next;
+      const pr = this.pixelRatio();
+      this.renderer.setPixelRatio(pr);
+      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+      this.post.setSize(window.innerWidth, window.innerHeight, pr);
+    }
   }
 
   start(): void {
@@ -248,7 +303,9 @@ export class Game {
   private resize(): void {
     const w = window.innerWidth;
     const h = window.innerHeight;
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.setSize(w, h, false);
+    this.post?.setSize(w, h, this.pixelRatio());
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.cockpit.layout(w, h);
@@ -291,7 +348,8 @@ export class Game {
   private frame(): void {
     this.timer.update();
     // Physics runs in fixed steps so slow devices still ride at the true speed.
-    const rawDt = Math.min(this.timer.getDelta(), 0.25);
+    const frameTime = this.timer.getDelta();
+    const rawDt = Math.min(frameTime, 0.25);
     const dt = Math.min(rawDt, 0.05);
     this.elapsed += dt;
 
@@ -332,7 +390,19 @@ export class Game {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
-    this.headlamp.intensity = this.headlight ? 60 : 0;
+    const fx = -Math.sin(s.heading);
+    const fz = -Math.cos(s.heading);
+    this.headlamp.position.set(s.x + fx * 0.6, 1.05, s.z + fz * 0.6);
+    this.headlamp.target.position.set(s.x + fx * 14, 0, s.z + fz * 14);
+    this.headlamp.intensity = this.headlight ? 150 : 0;
+
+    this.night.update(this.elapsed, this.camera);
+    // The cockpit photo is day-lit; darken it to match the street light around the rider.
+    const level = Math.round((0.3 + this.night.lighting.levelAt(s.x, s.z) * 0.6) * 50) / 50;
+    if (level !== this.cockpitLight) {
+      this.cockpitLight = level;
+      this.cockpit.setLighting(level);
+    }
 
     this.cockpit.render({
       speedKmh: Math.abs(s.speed) * 3.6,
@@ -352,6 +422,7 @@ export class Game {
       this.persist();
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.post.render(this.elapsed);
+    this.adaptResolution(frameTime);
   }
 }
