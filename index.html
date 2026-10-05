@@ -17,7 +17,7 @@
         <div class="hud-left">
           <div class="chip" id="place">Dạo phố</div>
           <button class="btn" id="btn-mute" type="button">Âm thanh: bật</button>
-          <button class="btn" id="btn-help" type="button" aria-label="Hướng dẫn">?</button>
+          <button class="btn" id="btn-help" type="button">Đồng hồ</button>
         </div>
         <canvas id="minimap" width="150" height="150" aria-label="Bản đồ"></canvas>
       </div>
@@ -44,16 +44,22 @@
       <div id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
         <div class="panel-card">
           <div class="panel-head">
-            <h2 id="panel-title">Lái xe dạo phố</h2>
-            <button class="btn" id="panel-close" type="button">Lên xe</button>
+            <h2 id="panel-title">Chọn mặt đồng hồ</h2>
           </div>
-          <ul class="help-list">
-            <li>Nổ máy rồi thong thả chạy quanh phố. Không có điểm số, không có thời gian.</li>
-            <li><b>Máy tính:</b> W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái. K nổ máy, H bóp còi, Q E xi nhan, L bật đèn, M tắt tiếng. Kéo chuột để quay đầu nhìn.</li>
-            <li><b>Điện thoại:</b> kéo nửa trái màn hình: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái. Vuốt nửa phải để nhìn quanh.</li>
-            <li>Có thể bấm thẳng vào nút trên tay lái: còi, đèn, xi nhan và nút đề.</li>
-            <li>Quãng đường và vị trí được lưu trên trình duyệt này.</li>
-          </ul>
+          <div id="gauge-picker" class="gauge-grid" role="radiogroup" aria-labelledby="panel-title"></div>
+          <details class="help">
+            <summary>Cách chơi</summary>
+            <ul class="help-list">
+              <li>Nổ máy rồi thong thả chạy quanh phố. Không có điểm số, không có thời gian.</li>
+              <li><b>Máy tính:</b> W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái. K nổ máy, H bóp còi, Q E xi nhan, L bật đèn, M tắt tiếng. Kéo chuột để quay đầu nhìn.</li>
+              <li><b>Điện thoại:</b> kéo nửa trái màn hình: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái. Vuốt nửa phải để nhìn quanh.</li>
+              <li>Có thể bấm thẳng vào nút trên tay lái: còi, đèn, xi nhan và nút đề.</li>
+              <li>Mặt đồng hồ, quãng đường và vị trí được lưu trên trình duyệt này.</li>
+            </ul>
+          </details>
+          <div class="panel-foot">
+            <button class="btn primary" id="panel-close" type="button">Lên xe</button>
+          </div>
         </div>
       </div>
     </div>

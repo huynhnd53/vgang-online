@@ -11,6 +11,7 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
   Vuốt nửa phải để nhìn. Các nút Còi, xi nhan, Đèn, Đề ở góc phải. Nên xoay ngang.
 - Có thể bấm thẳng vào công tắc trên ảnh tay lái: đèn, còi, xi nhan, nút đề ⚡.
+- Khi vào game, chọn mặt đồng hồ (Cổ điển, Điện tử, Thể thao, Retro, Neon); đổi lại bất cứ lúc nào bằng nút *Đồng hồ*.
 - Xi nhan tự tắt sau khi rẽ xong. Đứng yên giữ phanh để dắt lùi xe.
 
 Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu trong `localStorage` của từng trình duyệt.
@@ -35,6 +36,7 @@ Cấu trúc:
   - `billboards.ts` — vẽ ảnh asset (cột đèn, đèn giao thông, ghế, bồn cây, cọc) thành tấm luôn quay về
     phía người lái, mỗi loại một lần vẽ.
   - `simpleCity.ts` — ghép tất cả: đường, vỉa hè, vạch sơn, nhà, đồ đường phố, hồ, công viên, đèn pha xe.
+- `src/cockpit/gauges.ts` — các mặt đồng hồ. Thêm mặt mới: thêm một mục vào `GAUGE_THEMES` với hàm `draw` vẽ trong khung 480×220.
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.

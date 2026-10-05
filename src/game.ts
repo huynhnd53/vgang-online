@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { Sound } from './audio/sound';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
-import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
+import { DEFAULT_GAUGE, drawGauge, GAUGE_THEMES, gaugeTheme } from './cockpit/gauges';
+import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
 import { type Block, type City, generateCity } from './sim/city';
 import { MAX_SPEED, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
@@ -52,6 +53,7 @@ export class Game {
   private shake = 0;
   private hornHeld = false;
   private hornDownAt = 0;
+  private gauge = DEFAULT_GAUGE;
   private night: NightCity;
   private cockpitLight = -1;
   private landmark: Block | null = null;
@@ -92,6 +94,8 @@ export class Game {
     this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
     $('cockpit-layer').append(this.cockpit.root);
     this.cockpit.onAction = (a) => this.handle(a);
+    this.gauge = gaugeTheme(getString('gauge') ?? DEFAULT_GAUGE).id;
+    this.cockpit.setTheme(this.gauge);
 
     this.minimap = new Minimap($('minimap') as HTMLCanvasElement, this.city);
 
@@ -110,7 +114,8 @@ export class Game {
       }
     });
 
-    if (getFlag('ride-help-seen')) $('panel').classList.add('hidden');
+    // The start screen (gauge picker) shows on every visit.
+    this.buildGaugePicker();
     this.refreshChrome();
   }
 
@@ -147,11 +152,45 @@ export class Game {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
+  /** Cards with a live preview of every speedometer face; picking one applies and remembers it. */
+  private buildGaugePicker(): void {
+    const picker = $('gauge-picker');
+    const preview = { speedKmh: 46, leftLamp: true, rightLamp: false, headlight: true, engineOn: true, odometerKm: 128.4 };
+    const cards: HTMLButtonElement[] = [];
+    const select = (id: string) => {
+      this.gauge = id;
+      this.cockpit.setTheme(id);
+      setString('gauge', id);
+      for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
+    };
+    for (const theme of GAUGE_THEMES) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'gauge-card';
+      card.setAttribute('role', 'radio');
+      card.dataset.id = theme.id;
+      const canvas = document.createElement('canvas');
+      canvas.width = 480;
+      canvas.height = 220;
+      drawGauge(canvas, theme, preview);
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = theme.name;
+      const sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = theme.description;
+      card.append(canvas, name, sub);
+      card.addEventListener('click', () => select(theme.id));
+      cards.push(card);
+      picker.append(card);
+    }
+    select(this.gauge);
+  }
+
   private bindUi(): void {
     $('panel-close').addEventListener('click', () => {
       this.sound.unlock();
       $('panel').classList.add('hidden');
-      setFlag('ride-help-seen');
     });
     $('btn-help').addEventListener('click', () => $('panel').classList.remove('hidden'));
     $('btn-mute').addEventListener('click', () => this.handle('mute'));

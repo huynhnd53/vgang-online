@@ -1,3 +1,5 @@
+import { DEFAULT_GAUGE, drawGauge, type GaugeTheme, gaugeTheme } from './gauges';
+
 /** Native pixel size of public/assets/handlebar.webp. */
 const IMG_W = 1672;
 const IMG_H = 940;
@@ -43,10 +45,10 @@ export class Cockpit {
   readonly root = document.createElement('div');
   private readonly turn = document.createElement('div');
   private readonly canvas = document.createElement('canvas');
-  private readonly ctx: CanvasRenderingContext2D;
   private readonly img: HTMLImageElement;
   private scale = 1;
   private lastKey = '';
+  private theme: GaugeTheme = gaugeTheme(DEFAULT_GAUGE);
   onAction: (action: CockpitAction) => void = () => {};
 
   constructor(src: string) {
@@ -66,7 +68,6 @@ export class Cockpit {
       width: `${GAUGE.w}px`,
       height: `${GAUGE.h}px`,
     });
-    this.ctx = this.canvas.getContext('2d')!;
     this.turn.style.transformOrigin = `${PIVOT.x}px ${PIVOT.y}px`;
     this.turn.append(img, this.canvas);
 
@@ -143,123 +144,13 @@ export class Cockpit {
     this.drawGauge(v);
   }
 
+  /** Switches the speedometer face; see gauges.ts for the available themes. */
+  setTheme(id: string): void {
+    this.theme = gaugeTheme(id);
+    this.lastKey = '';
+  }
+
   private drawGauge(v: CockpitView): void {
-    const ctx = this.ctx;
-    const k = this.canvas.width / GAUGE.w;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.setTransform(k, 0, 0, k, 0, 0);
-
-    // Clip to the dial glass so the bezel from the photo stays visible.
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(240, 108, 222, 95, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const bg = ctx.createRadialGradient(238, 150, 20, 238, 130, 240);
-    bg.addColorStop(0, '#20262b');
-    bg.addColorStop(1, '#0c0f11');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, GAUGE.w, GAUGE.h);
-
-    const cx = 238;
-    const cy = 158;
-    const R = 98;
-    const MAX = 140;
-    const SWEEP = (96 * Math.PI) / 180;
-    const angleFor = (kmh: number) => -SWEEP + (kmh / MAX) * SWEEP * 2;
-    const polar = (a: number, r: number) => [cx + Math.sin(a) * r, cy - Math.cos(a) * r] as const;
-
-    // Outer ring.
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R + 4, -Math.PI / 2 - SWEEP, -Math.PI / 2 + SWEEP);
-    ctx.stroke();
-
-    // Ticks and numbers.
-    ctx.fillStyle = '#f4f4f4';
-    ctx.font = 'bold 17px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let s = 0; s <= MAX; s += 10) {
-      const a = angleFor(s);
-      const major = s % 20 === 0;
-      const [x0, y0] = polar(a, R);
-      const [x1, y1] = polar(a, R - (major ? 13 : 7));
-      ctx.strokeStyle = s >= 120 ? '#ff5a4f' : '#f4f4f4';
-      ctx.lineWidth = major ? 3 : 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
-      if (major) {
-        const [tx, ty] = polar(a, R - 28);
-        ctx.fillText(String(s), tx, ty);
-      }
-    }
-    ctx.font = '600 10px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.fillText('km/h', cx, cy - 34);
-
-    // Odometer.
-    ctx.fillStyle = '#9fb59a';
-    ctx.fillRect(cx - 36, cy + 19, 72, 15);
-    ctx.fillStyle = '#1f2a1d';
-    ctx.font = 'bold 11px ui-monospace, monospace';
-    ctx.fillText(`${v.odometerKm.toFixed(1).padStart(6, '0')} km`, cx, cy + 27);
-
-    // Needle.
-    const a = angleFor(Math.min(MAX, Math.max(0, v.speedKmh)));
-    const [nx, ny] = polar(a, R - 6);
-    const [tx, ty] = polar(a + Math.PI, 14);
-    ctx.strokeStyle = '#ef3b2d';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(tx, ty);
-    ctx.lineTo(nx, ny);
-    ctx.stroke();
-    ctx.fillStyle = '#d2271c';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Warning lamps.
-    const arrow = (x: number, dir: -1 | 1, lit: boolean) => {
-      ctx.fillStyle = lit ? '#3ee86f' : '#1f3526';
-      ctx.beginPath();
-      ctx.moveTo(x + dir * 14, 92);
-      ctx.lineTo(x - dir * 2, 80);
-      ctx.lineTo(x - dir * 2, 86);
-      ctx.lineTo(x - dir * 14, 86);
-      ctx.lineTo(x - dir * 14, 98);
-      ctx.lineTo(x - dir * 2, 98);
-      ctx.lineTo(x - dir * 2, 104);
-      ctx.closePath();
-      ctx.fill();
-    };
-    arrow(82, -1, v.leftLamp);
-    arrow(398, 1, v.rightLamp);
-    ctx.fillStyle = v.headlight ? '#3d8bff' : '#1a2840';
-    ctx.beginPath();
-    ctx.arc(370, 140, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = v.engineOn ? '#3ee86f' : '#ffa531';
-    ctx.beginPath();
-    ctx.arc(108, 140, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Glass reflection.
-    const gloss = ctx.createLinearGradient(0, 0, 0, GAUGE.h);
-    gloss.addColorStop(0, 'rgba(255,255,255,0.14)');
-    gloss.addColorStop(0.45, 'rgba(255,255,255,0.02)');
-    gloss.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = gloss;
-    ctx.fillRect(0, 0, GAUGE.w, GAUGE.h);
-    ctx.restore();
+    drawGauge(this.canvas, this.theme, v);
   }
 }
