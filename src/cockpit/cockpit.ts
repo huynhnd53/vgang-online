@@ -1,5 +1,6 @@
 import { type BikeDef, bikeDef, DEFAULT_BIKE } from './bikes';
-import { DEFAULT_GAUGE, drawGauge, type GaugeTheme, gaugeTheme } from './gauges';
+import { drawGauge, gaugeTheme } from './gauges';
+import { drawReadout } from './readout';
 
 export type CockpitAction = 'horn-down' | 'horn-up' | 'light' | 'signal-left' | 'signal-right' | 'engine';
 
@@ -25,7 +26,6 @@ export class Cockpit {
   private vw = 0;
   private vh = 0;
   private lastKey = '';
-  private theme: GaugeTheme = gaugeTheme(DEFAULT_GAUGE);
   onAction: (action: CockpitAction) => void = () => {};
 
   constructor(assetBase: string) {
@@ -57,10 +57,10 @@ export class Cockpit {
     }
     Object.assign(this.img.style, { width: `${b.width}px`, height: `${b.height}px` });
     Object.assign(this.canvas.style, {
-      left: `${b.gauge.x}px`,
-      top: `${b.gauge.y}px`,
-      width: `${b.gauge.w}px`,
-      height: `${b.gauge.h}px`,
+      left: `${b.display.rect.x}px`,
+      top: `${b.display.rect.y}px`,
+      width: `${b.display.rect.w}px`,
+      height: `${b.display.rect.h}px`,
     });
     this.turn.style.transformOrigin = `${b.pivot.x}px ${b.pivot.y}px`;
 
@@ -90,6 +90,7 @@ export class Cockpit {
       return btn;
     });
     if (this.vw) this.layout(this.vw, this.vh);
+    this.matchPhoto();
     this.lastKey = '';
   }
 
@@ -107,8 +108,8 @@ export class Cockpit {
     this.scale = scale;
     this.root.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(1, Math.round(b.gauge.w * scale * dpr));
-    const h = Math.max(1, Math.round(b.gauge.h * scale * dpr));
+    const w = Math.max(1, Math.round(b.display.rect.w * scale * dpr));
+    const h = Math.max(1, Math.round(b.display.rect.h * scale * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
@@ -120,6 +121,12 @@ export class Cockpit {
   setLighting(level: number): void {
     const b = Math.max(0.15, Math.min(1, level));
     this.img.style.filter = `brightness(${b.toFixed(2)}) sepia(0.35) saturate(1.15) hue-rotate(-8deg)`;
+    this.matchPhoto();
+  }
+
+  /** A readout is part of the photo's screen, so it takes the same lighting as the photo. */
+  private matchPhoto(): void {
+    this.canvas.style.filter = this.bike.display.kind === 'readout' ? this.img.style.filter : '';
   }
 
   /** Screen-space height covered by the bars, so other UI can sit above them. */
@@ -144,13 +151,9 @@ export class Cockpit {
     this.drawGauge(v);
   }
 
-  /** Switches the speedometer face; see gauges.ts for the available themes. */
-  setTheme(id: string): void {
-    this.theme = gaugeTheme(id);
-    this.lastKey = '';
-  }
-
   private drawGauge(v: CockpitView): void {
-    drawGauge(this.canvas, this.theme, v, this.bike.gaugeClip);
+    const d = this.bike.display;
+    if (d.kind === 'gauge') drawGauge(this.canvas, gaugeTheme(d.face), v);
+    else drawReadout(this.canvas, d, v.speedKmh);
   }
 }

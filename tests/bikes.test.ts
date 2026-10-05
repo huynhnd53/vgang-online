@@ -6,14 +6,18 @@ const inside = (r: { x: number; y: number; w: number; h: number }, w: number, h:
   r.x >= 0 && r.y >= 0 && r.x + r.w <= w && r.y + r.h <= h;
 
 describe('bikes', () => {
-  it('have unique ids and use an existing gauge face', () => {
+  it('have unique ids and a speed display that exists', () => {
     expect(new Set(BIKES.map((b) => b.id)).size).toBe(BIKES.length);
-    for (const b of BIKES) expect(GAUGE_THEMES.some((t) => t.id === b.face)).toBe(true);
+    for (const b of BIKES) {
+      const d = b.display;
+      if (d.kind === 'gauge') expect(GAUGE_THEMES.some((t) => t.id === d.face)).toBe(true);
+      else expect(d.digits).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('keep the gauge and every switch hotspot inside the photo', () => {
     for (const b of BIKES) {
-      expect(inside(b.gauge, b.width, b.height)).toBe(true);
+      expect(inside(b.display.rect, b.width, b.height)).toBe(true);
       for (const h of b.hotspots) expect(inside(h, b.width, b.height)).toBe(true);
       expect(b.barTop).toBeLessThan(b.visibleBottom[0]);
       expect(b.visibleBottom[0]).toBeLessThanOrEqual(b.visibleBottom[1]);

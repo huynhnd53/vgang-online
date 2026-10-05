@@ -1,5 +1,5 @@
 import type { CockpitAction } from './cockpit';
-import type { GaugeClip } from './gauges';
+import type { ReadoutStyle } from './readout';
 
 export interface Hotspot {
   x: number;
@@ -15,6 +15,13 @@ export interface Hotspot {
  * One rideable front end: a transparent first-person photo of the handlebars plus where its parts are.
  * All coordinates are in the image's own pixels.
  */
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface BikeDef {
   id: string;
   name: string;
@@ -31,15 +38,14 @@ export interface BikeDef {
   fit?: number;
   /** Steering column pivot (may lie below the image). */
   pivot: { x: number; y: number };
-  /** Rectangle covering the instrument screen; the live gauge is drawn into it. */
-  gauge: { x: number; y: number; w: number; h: number };
   /**
-   * 'ellipse': oval dial glass, the whole face is drawn over it.
-   * 'rect' / 'panel': an LCD; with an LCD face only its screen is fitted to `gauge` (rectangular or the face's outline).
+   * How speed is shown:
+   * - 'gauge': a drawn speedometer face over the dial glass (the original photo has a blank dial);
+   * - 'readout': the photo stays as it is and only its printed number is replaced by the live speed.
    */
-  gaugeClip: GaugeClip;
-  /** Face used when this bike is picked (the rider can still change it). */
-  face: string;
+  display:
+    | { kind: 'gauge'; rect: Rect; face: string }
+    | ({ kind: 'readout'; rect: Rect } & ReadoutStyle);
   hotspots: Hotspot[];
 }
 
@@ -56,9 +62,7 @@ export const BIKES: BikeDef[] = [
     barTop: 270,
     visibleBottom: [600, 720],
     pivot: { x: 836, y: 1180 },
-    gauge: { x: 615, y: 345, w: 480, h: 220 },
-    gaugeClip: 'ellipse',
-    face: 'classic',
+    display: { kind: 'gauge', rect: { x: 615, y: 345, w: 480, h: 220 }, face: 'classic' },
     fit: 0.952,
     hotspots: [
       { x: 368, y: 440, w: 70, h: 78, label: 'Đèn pha', down: 'light' },
@@ -78,9 +82,7 @@ export const BIKES: BikeDef[] = [
     barTop: 4,
     visibleBottom: [140, 237],
     pivot: { x: 262, y: 300 },
-    gauge: { x: 204, y: 51, w: 84, h: 45 },
-    gaugeClip: 'rect',
-    face: 'lcd-blue',
+    display: { kind: 'readout', rect: { x: 230, y: 62, w: 37, h: 27 }, bg: '#4a45b0', ink: '#e4e9ff', off: 'rgba(228,233,255,0.08)', glow: 'rgba(200,210,255,0.6)', digits: 2 },
     hotspots: [
       { ...SIG(68, 66, 26, 18), label: 'Đèn pha', down: 'light' },
       { ...SIG(68, 85, 26, 16), label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -99,9 +101,7 @@ export const BIKES: BikeDef[] = [
     barTop: 6,
     visibleBottom: [150, 221],
     pivot: { x: 256, y: 290 },
-    gauge: { x: 138, y: 64, w: 190, h: 90 },
-    gaugeClip: 'ellipse',
-    face: 'analog-amber',
+    display: { kind: 'readout', rect: { x: 218, y: 105, w: 31, h: 14 }, bg: '#24090f', ink: '#ffb27a', off: 'rgba(255,178,122,0.08)', glow: 'rgba(255,120,60,0.7)', digits: 2 },
     hotspots: [
       { ...SIG(50, 112, 26, 16), label: 'Đèn pha', down: 'light' },
       { ...SIG(52, 128, 26, 14), label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -120,9 +120,7 @@ export const BIKES: BikeDef[] = [
     barTop: 4,
     visibleBottom: [150, 281],
     pivot: { x: 346, y: 380 },
-    gauge: { x: 280, y: 25, w: 128, h: 57 },
-    gaugeClip: 'panel',
-    face: 'lcd-grey',
+    display: { kind: 'readout', rect: { x: 315, y: 55, w: 33, h: 25 }, bg: '#94979f', ink: '#d9dbdf', off: 'rgba(217,219,223,0.1)', digits: 2 },
     hotspots: [
       { ...SIG(160, 72, 30, 22), label: 'Đèn pha', down: 'light' },
       { ...SIG(158, 100, 34, 20), label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -141,9 +139,7 @@ export const BIKES: BikeDef[] = [
     barTop: 4,
     visibleBottom: [185, 272],
     pivot: { x: 260, y: 360 },
-    gauge: { x: 150, y: 52, w: 193, h: 96 },
-    gaugeClip: 'ellipse',
-    face: 'white-dial',
+    display: { kind: 'readout', rect: { x: 230, y: 99, w: 34, h: 12 }, bg: '#cedeee', ink: '#3e4955', digits: 2 },
     hotspots: [
       { ...SIG(62, 118, 20, 26), label: 'Đèn pha', down: 'light' },
       { ...SIG(70, 150, 40, 14), label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -162,9 +158,7 @@ export const BIKES: BikeDef[] = [
     barTop: 2,
     visibleBottom: [160, 197],
     pivot: { x: 260, y: 270 },
-    gauge: { x: 242, y: 14, w: 72, h: 39 },
-    gaugeClip: 'rect',
-    face: 'lcd-mono',
+    display: { kind: 'readout', rect: { x: 249, y: 24, w: 29, h: 22 }, bg: '#d1e2f4', ink: '#4c5d72', off: 'rgba(76,93,114,0.08)', digits: 2 },
     hotspots: [
       { ...SIG(102, 106, 18, 30), label: 'Đèn pha', down: 'light' },
       { ...SIG(70, 142, 22, 20), label: 'Còi', down: 'horn-down', up: 'horn-up' },
