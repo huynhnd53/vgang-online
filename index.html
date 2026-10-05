@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1f2a30" />
+    <title>Vgang Online</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <div id="hud">
+        <div class="hud-left">
+          <div class="chip" id="money">Tiền: 0</div>
+          <div class="chip" id="where">Nhà</div>
+          <div class="chip hidden" id="shift"></div>
+        </div>
+        <div class="hud-right">
+          <button class="btn" id="btn-catalog" type="button">Danh mục</button>
+          <button class="btn" id="btn-inventory" type="button">Đồ của tôi</button>
+          <button class="btn" id="btn-camera" type="button" title="Đổi góc nhìn (V)">Góc nhìn</button>
+          <button class="btn" id="btn-help" type="button" aria-label="Hướng dẫn">?</button>
+        </div>
+      </div>
+
+      <div id="objective" class="hidden"></div>
+      <div id="crosshair" class="hidden"></div>
+      <div id="prompt" class="hidden"></div>
+      <div id="toasts"></div>
+
+      <div id="touch" class="hidden">
+        <div id="joystick"><div id="joystick-knob"></div></div>
+        <div class="touch-buttons">
+          <button class="tbtn hidden" id="t-cancel" type="button">Hủy</button>
+          <button class="tbtn hidden" id="t-rotate" type="button">Xoay</button>
+          <button class="tbtn primary" id="t-interact" type="button">Dùng</button>
+        </div>
+      </div>
+
+      <div id="lock-hint" class="hidden">Nhấp chuột vào màn hình để điều khiển</div>
+      <div id="rotate-hint" class="hidden">
+        <span>Xoay ngang điện thoại để chơi thoải mái hơn</span>
+        <button class="btn" id="rotate-dismiss" type="button">Vẫn chơi dọc</button>
+      </div>
+
+      <div id="panel" class="hidden" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2 id="panel-title"></h2>
+            <button class="btn" id="panel-close" type="button">Đóng</button>
+          </div>
+          <div id="panel-body"></div>
+        </div>
+      </div>
+
+      <div id="fade"></div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
