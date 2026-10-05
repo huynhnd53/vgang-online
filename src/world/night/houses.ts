@@ -9,7 +9,16 @@ import {
   UPPER_FLOOR_H,
 } from '../../sim/city';
 import { type FacadeAtlas, PLAIN_PARAPET, PLAIN_ROOF, ROW_GROUND, ROW_PLAIN, ROW_UPPER } from './facade';
-import type { StreetLight } from './lighting';
+
+/** A light source used when baking light into vertex colours. */
+export interface StreetLight {
+  pos: THREE.Vector3;
+  color: THREE.Color;
+  /** Brightness at the light's foot. */
+  strength: number;
+  /** Falloff radius in metres. */
+  radius: number;
+}
 
 const CURB_H = 0.16;
 const PARAPET_H = 0.9;
@@ -250,17 +259,14 @@ export function buildHouses(lots: Lot[], atlas: FacadeAtlas, signCount: number, 
     if (LIT_GROUND.has(lot.ground)) {
       const cafe = lot.ground === 5;
       lights.push({
-        pos: frontCenter.clone().addScaledVector(n, 1.2).setY(CURB_H + 2.2),
-        dir: n.clone().setY(-1.2).normalize(),
-        cosOuter: Math.cos(1.0),
+        pos: frontCenter.clone().addScaledVector(n, 1.5).setY(CURB_H + 2.4),
         color: cafe ? shopWarm : shopCool,
-        intensity: 70,
-        range: 9,
-        real: false,
+        strength: 1.6,
+        radius: 3,
       });
     } else if (lot.ground === DOOR_LAMP_GROUND) {
       const p = frontCenter.clone().addScaledVector(n, 0.15).setY(CURB_H + GROUND_FLOOR_H * (1 - 26 / 256));
-      lights.push({ pos: p, dir: n.clone().setY(-1).normalize(), cosOuter: Math.cos(1.3), color: lampWarm, intensity: 22, range: 6, real: false });
+      lights.push({ pos: p.clone().addScaledVector(n, 0.6), color: lampWarm, strength: 1.0, radius: 2 });
       glows.push({ pos: p.clone().addScaledVector(n, 0.05), color: new THREE.Color(1, 0.7, 0.4).multiplyScalar(0.55) });
     }
 

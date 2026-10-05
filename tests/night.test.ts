@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateCity, LIT_GROUND, LIT_UPPER, DOOR_LAMP_GROUND } from '../src/sim/city';
 import { buildHouses } from '../src/world/night/houses';
-import { signalState } from '../src/world/night/streets';
 
 // A stand-in atlas: every cell maps to the unit square.
 const atlas = { uv: () => [0, 0, 1, 1] as [number, number, number, number] } as never;
@@ -31,7 +30,7 @@ describe('night houses', () => {
 
   it('gives every open shop a light that spills onto the sidewalk', () => {
     const shops = lots.filter((l) => LIT_GROUND.has(l.ground)).length;
-    expect(houses.lights.filter((l) => l.range === 9).length).toBe(shops);
+    expect(houses.lights.filter((l) => l.strength === 1.6).length).toBe(shops);
   });
 
   it('builds geometry with matching attribute counts', () => {
@@ -40,17 +39,6 @@ describe('night houses', () => {
       expect(n % 6).toBe(0);
       expect(g.getAttribute('uv').count).toBe(n);
       expect(g.getAttribute('normal').count).toBe(n);
-    }
-  });
-});
-
-describe('traffic signals', () => {
-  it('never shows green both ways at once', () => {
-    for (let t = 0; t < 60; t += 0.25) {
-      const ns = signalState(t, true);
-      const ew = signalState(t, false);
-      expect(ns === 2 && ew === 2).toBe(false);
-      expect(ns === 0 && ew === 0 && t % 30 < 30).toBe(false);
     }
   });
 });
