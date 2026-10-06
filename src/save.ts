@@ -37,6 +37,22 @@ export function saveRide(data: RideSave): void {
   }
 }
 
+export function getString(key: string): string | null {
+  try {
+    return localStorage.getItem(`vgang-online/${key}`);
+  } catch {
+    return null;
+  }
+}
+
+export function setString(key: string, value: string): void {
+  try {
+    localStorage.setItem(`vgang-online/${key}`, value);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function getFlag(key: string): boolean {
   try {
     return localStorage.getItem(`vgang-online/${key}`) === '1';
