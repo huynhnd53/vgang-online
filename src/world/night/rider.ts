@@ -6,6 +6,8 @@ import { radialTexture } from './proc';
 
 // Local space: forward is −z, up is +y, origin on the ground midway between the wheels.
 const FRONT_PIVOT_Z = -0.45;
+/** Where the rear tyre touches the road: wheelies pivot here. */
+export const REAR_CONTACT_Z = 0.62;
 const DARK = 0x1a1a1c;
 const METAL = 0x7d8085;
 const CHROME = 0x9a9da2;
@@ -220,6 +222,7 @@ function riderGeometry(l: Layout, helmet: number): THREE.BufferGeometry {
 export class PlayerBike {
   readonly group = new THREE.Group();
   private readonly lean = new THREE.Group();
+  private readonly pitch = new THREE.Group();
   private readonly frontPivot = new THREE.Group();
   private readonly frontWheel: THREE.Mesh;
   private readonly rearWheel: THREE.Mesh;
@@ -234,7 +237,13 @@ export class PlayerBike {
     const l = layout(model);
     this.r = l.r;
     this.group.rotation.order = 'YXZ';
-    this.group.add(this.lean);
+    // yaw (group) → pitch about the rear contact patch → lean about the bike's own length.
+    this.pitch.position.z = REAR_CONTACT_Z;
+    this.group.add(this.pitch);
+    const back = new THREE.Group();
+    back.position.z = -REAR_CONTACT_Z;
+    this.pitch.add(back);
+    back.add(this.lean);
 
     const shadow = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
@@ -256,7 +265,7 @@ export class PlayerBike {
     this.lean.add(new THREE.Mesh(mergeGeometries([...l.body, riderGeometry(l, helmet)]), this.bodyMat));
     const wheelGeo = wheel(l.r);
     this.rearWheel = new THREE.Mesh(wheelGeo, this.bodyMat);
-    this.rearWheel.position.set(0, l.r, 0.62);
+    this.rearWheel.position.set(0, l.r, REAR_CONTACT_Z);
     this.lean.add(this.rearWheel);
 
     this.frontPivot.position.z = FRONT_PIVOT_Z;
@@ -290,7 +299,8 @@ export class PlayerBike {
 
   /**
    * Places the bike and animates wheels, steering, lean and lamps.
-   * `light` is the street-light level at the bike (0 dark … 1 under a lamp).
+   * `light` is the street-light level at the bike (0 dark … 1 under a lamp); `pitch` lifts the front
+   * (wheelie) and `fallen` lays the bike on its side after a crash.
    */
   update(
     dt: number,
@@ -298,11 +308,14 @@ export class PlayerBike {
     ground: number,
     light: number,
     lamps: { head: boolean; brake: boolean; left: boolean; right: boolean },
+    pitch = 0,
+    fallen = false,
   ): void {
     this.group.position.set(s.x, ground, s.z);
     this.group.rotation.y = s.heading;
     const speedRatio = Math.min(1.6, Math.abs(s.speed) / 16.7);
-    this.lean.rotation.z = -s.steer * speedRatio * 0.38;
+    this.lean.rotation.z = fallen ? 1.35 : -s.steer * speedRatio * 0.38;
+    this.pitch.rotation.x = fallen ? 0 : pitch;
     this.frontPivot.rotation.y = (-s.steer * 0.5) / (1 + Math.abs(s.speed) * 0.12);
     const spin = (s.speed / this.r) * dt;
     this.frontWheel.rotation.x -= spin;

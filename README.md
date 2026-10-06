@@ -16,6 +16,9 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
   xe số "tạch tạch". Bấm vào xe ở màn chọn xe để nghe thử.
 - Hai góc nhìn: từ tay lái (ảnh đầu xe) hoặc từ sau xe (góc nhìn thứ 3, thấy cả người lái và xe đúng màu xe đã
   chọn, xe nghiêng khi cua, có đèn pha, đèn phanh, xi nhan). Đổi bằng nút "Nhìn" hoặc phím V.
+- Bốc đầu: khi chạy chậm, giữ Shift (hoặc B, hay nút "Bốc") và vít ga để nhấc đầu xe, rồi giữ thăng bằng
+  bằng ga và phanh sau. Mô phỏng như con lắc quanh bánh sau: ga đẩy đầu xe lên, trọng lực kéo xuống, quá điểm
+  cân bằng là lật xe (chết máy, phải đề lại). Côn tay dễ bốc nhất, tay ga khó nhất; quãng bốc đầu dài nhất được lưu.
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng, V đổi góc nhìn. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
@@ -36,6 +39,7 @@ npm run build    # build ra thư mục dist/
 
 Cấu trúc:
 
+- `src/sim/wheelie.ts` — vật lý bốc đầu (góc nâng, điểm cân bằng, lật xe).
 - `src/sim/traffic.ts` — NPC: xe chạy theo làn bên phải, rẽ ở ngã tư, giữ khoảng cách và dừng trước người chơi; người đi bộ vòng quanh vỉa hè.
 - `src/world/night/npcs.ts` — vẽ NPC bằng các khối hộp (instancing), có đèn pha, đèn hậu.
 - `src/world/night/rider.ts` — xe và người lái của mình cho góc nhìn thứ 3 (khối hộp, màu theo xe).

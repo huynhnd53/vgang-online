@@ -1,4 +1,5 @@
 import type { CockpitAction } from './cockpit';
+import type { WheelieProfile } from '../sim/wheelie';
 import type { GaugeClip } from './classicGauge';
 
 export interface Hotspot {
@@ -44,6 +45,8 @@ export interface BikeDef {
   hotspots: Hotspot[];
   /** How the bike looks from outside (third-person view): body style, main paint and trim colour. */
   model: BikeModel;
+  /** Balance point and how readily the front pops up. */
+  wheelie: WheelieProfile;
 }
 
 export interface BikeModel {
@@ -67,6 +70,7 @@ export const BIKES: BikeDef[] = [
     gaugeClip: 'ellipse',
     fit: 0.952,
     model: { kind: 'scooter', paint: 0xb3161b, trim: 0x1c1c1e },
+    wheelie: { balanceDeg: 46, pop: 18 },
     hotspots: [
       { x: 368, y: 440, w: 70, h: 78, label: 'Đèn pha', down: 'light' },
       { x: 384, y: 535, w: 100, h: 60, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -90,6 +94,7 @@ export const BIKES: BikeDef[] = [
     gauge: { x: 483, y: 406, w: 611, h: 324 },
     gaugeClip: 'ellipse',
     model: { kind: 'scooter', paint: 0x1d3f8f, trim: 0xd9d6cf },
+    wheelie: { balanceDeg: 45, pop: 16 },
     hotspots: [
       { x: 205, y: 550, w: 90, h: 90, label: 'Đèn pha', down: 'light' },
       { x: 250, y: 705, w: 70, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -119,6 +124,7 @@ export const BIKES: BikeDef[] = [
     ],
     textScale: 1.4,
     model: { kind: 'scooter', paint: 0xe9e7e2, trim: 0x232326 },
+    wheelie: { balanceDeg: 47, pop: 19 },
     hotspots: [
       { x: 385, y: 420, w: 60, h: 60, label: 'Đèn pha', down: 'light' },
       { x: 365, y: 500, w: 70, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -143,6 +149,7 @@ export const BIKES: BikeDef[] = [
     gaugeClip: 'rect',
     textScale: 1.4,
     model: { kind: 'scooter', paint: 0x1b1c1f, trim: 0x2a63c9 },
+    wheelie: { balanceDeg: 48, pop: 21 },
     hotspots: [
       { x: 235, y: 470, w: 70, h: 100, label: 'Đèn pha', down: 'light' },
       { x: 300, y: 640, w: 70, h: 55, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -167,6 +174,7 @@ export const BIKES: BikeDef[] = [
     gaugeClip: 'rect',
     textScale: 1.4,
     model: { kind: 'naked', paint: 0x18191b, trim: 0xb8babd },
+    wheelie: { balanceDeg: 52, pop: 36 },
     hotspots: [
       { x: 310, y: 560, w: 70, h: 60, label: 'Đèn pha', down: 'light' },
       { x: 280, y: 745, w: 60, h: 45, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -195,6 +203,7 @@ export const BIKES: BikeDef[] = [
       [0.25, 0.98],
     ],
     model: { kind: 'underbone', paint: 0x1f4fa8, trim: 0xe6e4de },
+    wheelie: { balanceDeg: 50, pop: 26 },
     hotspots: [
       { x: 200, y: 470, w: 80, h: 90, label: 'Đèn pha', down: 'light' },
       { x: 255, y: 650, w: 85, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -209,4 +218,9 @@ export const DEFAULT_BIKE = 'scooter-red';
 
 export function bikeDef(id: string | null): BikeDef {
   return BIKES.find((b) => b.id === id) ?? BIKES.find((b) => b.id === DEFAULT_BIKE)!;
+}
+
+/** How hard the bike is to pull a wheelie on, for the picker. */
+export function wheelieDifficulty(b: BikeDef): string {
+  return b.wheelie.pop >= 30 ? 'dễ' : b.wheelie.pop >= 22 ? 'vừa' : 'khó';
 }
