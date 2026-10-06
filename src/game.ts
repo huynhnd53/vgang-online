@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { Sound } from './audio/sound';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
-import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
+import { BIKES, bikeDef } from './cockpit/bikes';
+import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
 import { type Block, type City, generateCity } from './sim/city';
 import { MAX_SPEED, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
@@ -89,7 +90,8 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
 
-    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
+    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/`);
+    this.cockpit.setBike(bikeDef(getString('bike')).id);
     $('cockpit-layer').append(this.cockpit.root);
     this.cockpit.onAction = (a) => this.handle(a);
 
@@ -110,7 +112,8 @@ export class Game {
       }
     });
 
-    if (getFlag('ride-help-seen')) $('panel').classList.add('hidden');
+    // The start screen (gauge picker) shows on every visit.
+    this.buildBikePicker();
     this.refreshChrome();
   }
 
@@ -147,11 +150,44 @@ export class Game {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
+  /** Cards for each front end; picking one swaps the handlebar photo. */
+  private buildBikePicker(): void {
+    const picker = $('bike-picker');
+    const cards: HTMLButtonElement[] = [];
+    const select = (id: string) => {
+      this.cockpit.setBike(id);
+      setString('bike', id);
+      for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
+    };
+    for (const bike of BIKES) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'gauge-card bike-card';
+      card.setAttribute('role', 'radio');
+      card.dataset.id = bike.id;
+      const img = document.createElement('img');
+      img.src = `${import.meta.env.BASE_URL}assets/${bike.image}`;
+      img.alt = '';
+      // Show only the handlebar part of the photo.
+      img.style.objectPosition = `50% ${Math.round((bike.barTop / bike.height) * 100 + 15)}%`;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = bike.name;
+      const sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = bike.description;
+      card.append(img, name, sub);
+      card.addEventListener('click', () => select(bike.id));
+      cards.push(card);
+      picker.append(card);
+    }
+    select(this.cockpit.bikeId);
+  }
+
   private bindUi(): void {
     $('panel-close').addEventListener('click', () => {
       this.sound.unlock();
       $('panel').classList.add('hidden');
-      setFlag('ride-help-seen');
     });
     $('btn-help').addEventListener('click', () => $('panel').classList.remove('hidden'));
     $('btn-mute').addEventListener('click', () => this.handle('mute'));
