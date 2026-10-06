@@ -60,11 +60,12 @@ body {
   pointer-events: none;
 }
 
-/* Size comes from the selected bike (src/cockpit/bikes.ts). */
 #cockpit {
   position: absolute;
   left: 0;
   top: 0;
+  width: 1672px;
+  height: 940px;
   transform-origin: 0 0;
 }
 
@@ -77,6 +78,8 @@ body {
 .cockpit-turn img {
   position: absolute;
   inset: 0;
+  width: 1672px;
+  height: 940px;
   pointer-events: none;
 }
 
@@ -316,7 +319,7 @@ body {
 .panel-card {
   background: rgba(250, 247, 240, 0.97);
   border-radius: 16px;
-  width: min(680px, 100%);
+  width: min(480px, 100%);
   max-height: calc(100% - 8px);
   overflow: auto;
   padding: 16px 18px 18px;
@@ -340,94 +343,6 @@ body {
   background: var(--accent);
 }
 
-.gauge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px;
-}
-
-.gauge-card {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  background: #1c2024;
-  color: #f2efe8;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.gauge-card canvas {
-  width: 100%;
-  aspect-ratio: 480 / 220;
-  border-radius: 999px / 50%;
-  background: #0b0d10;
-}
-
-.gauge-card .name {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.gauge-card .sub {
-  font-size: 12px;
-  color: #b9b3a6;
-}
-
-.gauge-card[aria-checked='true'] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47, 143, 111, 0.35);
-}
-
-.gauge-card:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-.bike-card img {
-  width: 100%;
-  aspect-ratio: 480 / 220;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #0b0d10;
-}
-
-.panel-sub {
-  margin: 14px 0 8px;
-  font-size: 16px;
-}
-
-details.help {
-  margin-top: 12px;
-}
-
-details.help summary {
-  cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-/* Stays visible at the bottom of the card on short (landscape phone) screens. */
-.panel-foot {
-  position: sticky;
-  bottom: -18px;
-  display: flex;
-  justify-content: flex-end;
-  margin: 12px -18px -18px;
-  padding: 10px 18px 14px;
-  background: linear-gradient(rgba(250, 247, 240, 0), rgba(250, 247, 240, 0.97) 30%);
-}
-
-.panel-foot .btn {
-  background: var(--accent);
-  padding: 9px 22px;
-  font-size: 15px;
-}
-
 .help-list {
   margin: 0;
   padding-left: 18px;
@@ -440,9 +355,6 @@ details.help summary {
 }
 
 @media (max-width: 720px), (max-height: 480px) {
-  .gauge-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  }
   #minimap {
     width: 104px;
     height: 104px;

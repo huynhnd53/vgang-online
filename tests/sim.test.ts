@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateCity, ROAD } from '../src/sim/city';
 import { circleHitsRect, pointInRect, rectsOverlapForTest } from './helpers';
-import { MAX_SPEED, type ScooterState, SCOOTER_RADIUS, stepScooter } from '../src/sim/scooter';
+import { CRUISE_SPEED, type ScooterState, SCOOTER_RADIUS, stepScooter } from '../src/sim/scooter';
 
 const city = generateCity();
 const open = { x: 0, z: 0, w: 1e4, d: 1e4 };
@@ -14,10 +14,11 @@ function run(s: ScooterState, c: { throttle: number; brake: number; steer: numbe
 const start = (): ScooterState => ({ x: 0, z: 0, heading: 0, speed: 0, steer: 0 });
 
 describe('scooter', () => {
-  it('accelerates towards but never past the top speed', () => {
+  it('has no top speed: keeps accelerating while the throttle is held', () => {
+    const at10 = run(start(), { throttle: 1, brake: 0, steer: 0 }, 10, [], open);
     const s = run(start(), { throttle: 1, brake: 0, steer: 0 }, 30, [], open);
-    expect(s.speed).toBeGreaterThan(MAX_SPEED * 0.8);
-    expect(s.speed).toBeLessThanOrEqual(MAX_SPEED);
+    expect(at10.speed).toBeGreaterThan(CRUISE_SPEED);
+    expect(s.speed).toBeGreaterThan(at10.speed + 5);
     expect(s.z).toBeLessThan(0);
     expect(Math.abs(s.x)).toBeLessThan(1e-6);
   });

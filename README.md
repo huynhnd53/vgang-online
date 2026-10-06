@@ -6,12 +6,12 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 
 ## Cách chơi
 
+- Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
   Vuốt nửa phải để nhìn. Các nút Còi, xi nhan, Đèn, Đề ở góc phải. Nên xoay ngang.
 - Có thể bấm thẳng vào công tắc trên ảnh tay lái: đèn, còi, xi nhan, nút đề ⚡.
-- Khi vào game, chọn một trong 6 đầu xe (tay ga đỏ, tay ga LCD xanh, xe số kim cam, tay ga trắng, xe số mặt trắng, côn tay đen); đổi lại bất cứ lúc nào bằng nút *Đổi xe*. Đầu xe giữ nguyên như ảnh, chỉ con số tốc độ trên màn hình chạy theo xe.
 - Xi nhan tự tắt sau khi rẽ xong. Đứng yên giữ phanh để dắt lùi xe.
 
 Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu trong `localStorage` của từng trình duyệt.
@@ -36,8 +36,6 @@ Cấu trúc:
   - `billboards.ts` — vẽ ảnh asset (cột đèn, đèn giao thông, ghế, bồn cây, cọc) thành tấm luôn quay về
     phía người lái, mỗi loại một lần vẽ.
   - `simpleCity.ts` — ghép tất cả: đường, vỉa hè, vạch sơn, nhà, đồ đường phố, hồ, công viên, đèn pha xe.
-- `src/cockpit/readout.ts` — con số tốc độ kiểu LCD 7 đoạn vẽ đè lên số in sẵn trong ảnh đầu xe.
-- `src/cockpit/gauges.ts` — mặt đồng hồ kim cho tay lái đỏ (ảnh gốc có mặt đồng hồ trống).
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.
@@ -45,23 +43,11 @@ Cấu trúc:
 
 Game tự giảm độ phân giải khi khung hình tụt.
 
-### Thêm đầu xe
+### Thay asset
 
-Mỗi đầu xe là một mục trong `BIKES` ở `src/cockpit/bikes.ts` cộng một ảnh trong `public/assets/`.
-
-Yêu cầu ảnh:
-- PNG hoặc WebP **nền trong suốt**, góc nhìn của người lái, có cả hai tay cầm tay lái.
-- Rộng khoảng 1600px trở lên; phần đầu xe nằm ở nửa dưới ảnh, tay lái tràn gần hết chiều ngang.
-- Màn hình đồng hồ giữ nguyên như ảnh; game chỉ phủ con số tốc độ lên chỗ số in sẵn.
-
-Cấu hình (toạ độ tính bằng pixel của ảnh): `barTop` (hàng đầu tiên có đầu xe), `visibleBottom` (phần ảnh
-giữ trên màn hình), `pivot` (điểm xoay khi lái), `hotspots` (vị trí công tắc đèn, còi, xi nhan, nút đề) và
-`display`: thường là `{ kind: 'readout', rect, bg, ink, digits }` — `rect` phủ lên con số in sẵn trong ảnh,
-`bg` là màu nền màn hình, `ink` là màu số.
-
-### Đồ đường phố
-
-- `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
+- Ảnh tay lái: `public/assets/handlebar.webp` (1672×940, nền trong suốt). Nếu đổi ảnh khác kích thước,
+  sửa các hằng số `IMG_W`, `IMG_H`, `BAR_TOP`, `GAUGE` và `HOTSPOTS` trong `src/cockpit/cockpit.ts`.
+- Đồ đường phố: `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
   trong suốt, đã cắt sát vật). Kích thước ngoài đời và điểm chạm đất của từng ảnh nằm ở đầu
   `src/world/night/simpleCity.ts` (`LAMP`, `TRAFFIC`, `BENCH`, `PLANTER`, `CONE`).
 
