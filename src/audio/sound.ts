@@ -1,11 +1,21 @@
+import { EngineModel, ExhaustVoice, exhaustFor, scheduleDemo } from './exhaust';
+
+/** Exhaust level against the horn, blinker and bumps. */
+const ENGINE_LEVEL = 0.25;
+
 /**
- * Small synthesised sound set (no audio files): engine hum, horn, blinker tick and bumps.
+ * Small synthesised sound set (no audio files): each bike's exhaust, horn, blinker tick and bumps.
  * Browsers only allow audio after a user gesture, so call unlock() from an input handler.
  */
 export class Sound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private engine: { osc: OscillatorNode; osc2: OscillatorNode; gain: GainNode; filter: BiquadFilterNode } | null = null;
+  private bikeId = 'scooter-red';
+  private engine: EngineModel | null = null;
+  private voice: ExhaustVoice | null = null;
+  private engineOn = false;
+  private lastUpdate = 0;
+  private demo: ExhaustVoice | null = null;
   private horn: { oscs: OscillatorNode[]; gain: GainNode } | null = null;
   muted = false;
 
@@ -31,50 +41,61 @@ export class Sound {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(muted ? 0 : 0.8, this.ctx.currentTime, 0.05);
   }
 
-  /** Starts or stops the idle/engine loop. */
-  setEngine(on: boolean): void {
+  /** Switches to another bike's exhaust note; a running engine keeps running. */
+  setBike(id: string): void {
+    if (id === this.bikeId) return;
+    this.bikeId = id;
+    const running = this.engineOn;
     const ctx = this.ctx;
-    if (!ctx || !this.master) return;
-    if (on && !this.engine) {
-      const osc = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc2.type = 'square';
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 420;
-      const gain = ctx.createGain();
-      gain.gain.value = 0;
-      gain.gain.setTargetAtTime(0.07, ctx.currentTime, 0.15);
-      osc.connect(filter);
-      osc2.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.master);
-      osc.frequency.value = 34;
-      osc2.frequency.value = 17;
-      osc.start();
-      osc2.start();
-      this.engine = { osc, osc2, gain, filter };
-      this.burst(0.25, 900, 0.12);
-    } else if (!on && this.engine) {
-      const e = this.engine;
-      e.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
-      e.osc.stop(ctx.currentTime + 0.6);
-      e.osc2.stop(ctx.currentTime + 0.6);
-      this.engine = null;
+    if (this.voice && ctx) this.voice.stop(ctx.currentTime);
+    this.voice = null;
+    this.engine = null;
+    if (running && ctx) {
+      this.ensureVoice();
+      this.engine!.setRunning(true);
+      // Swapped while running: skip the starter.
+      this.engine!.step(1, 0, 0);
     }
   }
 
-  /** speed in m/s, throttle 0..1. */
+  /** Starts the engine on the starter, or switches it off. */
+  setEngine(on: boolean): void {
+    this.engineOn = on;
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return;
+    this.ensureVoice();
+    if (on && !this.engine!.running) this.voice!.starter(ctx.currentTime);
+    this.engine!.setRunning(on);
+  }
+
+  private ensureVoice(): void {
+    if (this.voice || !this.ctx || !this.master) return;
+    const p = exhaustFor(this.bikeId);
+    this.engine = new EngineModel(p);
+    this.voice = new ExhaustVoice(this.ctx, this.master, p, ENGINE_LEVEL);
+    this.lastUpdate = this.ctx.currentTime;
+  }
+
+  /** speed in m/s, throttle 0..1; call once per frame. */
   updateEngine(speed: number, throttle: number): void {
     const ctx = this.ctx;
+    if (!ctx) return;
+    if (this.engineOn) this.ensureVoice();
     const e = this.engine;
-    if (!ctx || !e) return;
-    const f = 34 + Math.abs(speed) * 4.2 + throttle * 14;
-    e.osc.frequency.setTargetAtTime(f, ctx.currentTime, 0.08);
-    e.osc2.frequency.setTargetAtTime(f / 2, ctx.currentTime, 0.08);
-    e.filter.frequency.setTargetAtTime(380 + throttle * 500 + Math.abs(speed) * 25, ctx.currentTime, 0.1);
-    e.gain.gain.setTargetAtTime(0.06 + throttle * 0.04, ctx.currentTime, 0.1);
+    if (!e || !this.voice) return;
+    const now = ctx.currentTime;
+    const dt = Math.min(0.25, Math.max(0, now - this.lastUpdate));
+    this.lastUpdate = now;
+    e.step(dt, speed, throttle);
+    this.voice.tick(now, e, speed);
+  }
+
+  /** A short rev of a bike's exhaust, for the bike picker. */
+  preview(id: string): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || this.muted) return;
+    if (this.demo) this.demo.stop(ctx.currentTime);
+    this.demo = scheduleDemo(ctx, this.master, exhaustFor(id), ENGINE_LEVEL, ctx.currentTime + 0.05).voice;
   }
 
   hornOn(): void {

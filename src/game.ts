@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { exhaustFor } from './audio/exhaust';
 import { Sound } from './audio/sound';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
@@ -166,6 +167,7 @@ export class Game {
     const cards: HTMLButtonElement[] = [];
     const select = (id: string) => {
       this.cockpit.setBike(id);
+      this.sound.setBike(id);
       setString('bike', id);
       for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
     };
@@ -186,8 +188,16 @@ export class Game {
       const sub = document.createElement('span');
       sub.className = 'sub';
       sub.textContent = bike.description;
-      card.append(img, name, sub);
-      card.addEventListener('click', () => select(bike.id));
+      const exhaust = document.createElement('span');
+      exhaust.className = 'exhaust';
+      exhaust.textContent = `Tiếng bô: ${exhaustFor(bike.id).label}`;
+      card.append(img, name, sub, exhaust);
+      card.addEventListener('click', () => {
+        select(bike.id);
+        // Picking a bike gives it a quick rev so each exhaust note can be heard.
+        this.sound.unlock();
+        this.sound.preview(bike.id);
+      });
       cards.push(card);
       picker.append(card);
     }
