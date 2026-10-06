@@ -1,7 +1,7 @@
 import { type Rect, mulberry32 } from './geometry';
 
 /** City grid dimensions in metres. Roads run along x and z between square blocks. */
-export const GRID = 6;
+export const GRID = 10;
 export const BLOCK = 46;
 export const ROAD = 14;
 export const SIDEWALK = 3.5;
@@ -76,9 +76,9 @@ const HOUSE_COLORS = [0xf2e8d5, 0xe9dcc0, 0xdfe3d6, 0xd9d4c8, 0xeadbb8, 0xd6dccf
 
 /** Special blocks give the city a few landmarks to ride to. */
 function kindFor(i: number, j: number): BlockKind {
-  if (i === 2 && j === 2) return 'lake';
-  if ((i === 4 && j === 1) || (i === 1 && j === 4)) return 'park';
-  if (i === 3 && j === 4) return 'plaza';
+  if ((i === 2 && j === 2) || (i === 7 && j === 6)) return 'lake';
+  if ((i === 6 && j === 1) || (i === 1 && j === 6) || (i === 4 && j === 8) || (i === 8 && j === 3)) return 'park';
+  if ((i === 4 && j === 4) || (i === 6 && j === 8)) return 'plaza';
   return 'houses';
 }
 

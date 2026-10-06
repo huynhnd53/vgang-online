@@ -7,6 +7,8 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 ## Cách chơi
 
 - Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
+- Khu phố 10×10 ô (khoảng 600 m mỗi chiều) với hồ, công viên, quảng trường; có xe máy, ô tô chạy theo làn,
+  rẽ ở ngã tư, dừng khi bị chắn, và người đi bộ trên vỉa hè. Đâm vào xe hay người đều bị chặn lại.
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
@@ -27,6 +29,8 @@ npm run build    # build ra thư mục dist/
 
 Cấu trúc:
 
+- `src/sim/traffic.ts` — NPC: xe chạy theo làn bên phải, rẽ ở ngã tư, giữ khoảng cách và dừng trước người chơi; người đi bộ vòng quanh vỉa hè.
+- `src/world/night/npcs.ts` — vẽ NPC bằng các khối hộp (instancing), có đèn pha, đèn hậu.
 - `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định, gồm loại tầng trệt,
   cửa sổ từng tầng, mái hiên, biển hiệu). Có test trong `tests/`.
 - `src/world/night/` — phố đêm, giữ đơn giản để chạy mượt:

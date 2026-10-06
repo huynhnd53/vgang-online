@@ -4,8 +4,11 @@ import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
 import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
 import { type Block, type City, generateCity } from './sim/city';
-import { CRUISE_SPEED, type ScooterState, stepScooter } from './sim/scooter';
+import { circleHitsRect } from './sim/geometry';
+import { CRUISE_SPEED, SCOOTER_RADIUS, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
+import { Traffic } from './sim/traffic';
+import { NpcView } from './world/night/npcs';
 import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/simpleCity';
 
 const EYE_HEIGHT = 1.35;
@@ -33,6 +36,8 @@ export class Game {
   readonly cockpit: Cockpit;
   readonly sound = new Sound();
   readonly minimap: Minimap;
+  readonly traffic: Traffic;
+  private npcs: NpcView;
 
   scooter: ScooterState;
   engineOn = false;
@@ -83,6 +88,10 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
     this.night = buildNightCity(this.city, `${import.meta.env.BASE_URL}assets/`);
     this.scene.add(this.night.group);
+    // Motorbikes, cars and people moving about the city.
+    this.traffic = new Traffic(this.city, 220, 320);
+    this.npcs = new NpcView(this.traffic, (x, z) => this.night.levelAt(x, z));
+    this.scene.add(this.npcs.group);
 
     this.camera.rotation.order = 'YXZ';
     this.camera.far = 1000;
@@ -332,10 +341,18 @@ export class Game {
     const c = helpOpen ? { throttle: 0, brake: 0, steer: 0 } : this.input.controls();
     this.throttle = this.engineOn ? c.throttle : 0;
 
+    for (let left = rawDt; left > 1e-6; left -= 1 / 30) this.traffic.update(Math.min(1 / 30, left), this.scooter);
+    this.npcs.update(rawDt);
+    // NPCs are solid too; skip any that have already walked into the rider so the scooter can always pull away.
+    const near = this.traffic
+      .collidersNear(this.scooter.x, this.scooter.z, 25)
+      .filter((r) => !circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r));
+    const colliders = near.length ? [...this.city.colliders, ...near] : this.city.colliders;
+
     let impact = 0;
     for (let left = rawDt; left > 1e-6; left -= 1 / 60) {
       const before = this.scooter;
-      const result = stepScooter(before, c, Math.min(1 / 60, left), this.engineOn, this.city.colliders, this.city.bounds);
+      const result = stepScooter(before, c, Math.min(1 / 60, left), this.engineOn, colliders, this.city.bounds);
       this.scooter = result.state;
       this.odometerKm += Math.hypot(this.scooter.x - before.x, this.scooter.z - before.z) / 1000;
       impact = Math.max(impact, result.impact);
@@ -384,7 +401,7 @@ export class Game {
       engineOn: this.engineOn,
       odometerKm: this.odometerKm,
     });
-    this.minimap.draw(s.x, s.z, s.heading);
+    this.minimap.draw(s.x, s.z, s.heading, this.traffic.vehicles);
     this.updatePrompt();
 
     this.saveTimer += dt;
