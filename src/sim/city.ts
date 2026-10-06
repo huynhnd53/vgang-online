@@ -1,7 +1,7 @@
 import { type Rect, mulberry32 } from './geometry';
 
 /** City grid dimensions in metres. Roads run along x and z between square blocks. */
-export const GRID = 6;
+export const GRID = 10;
 export const BLOCK = 46;
 export const ROAD = 14;
 export const SIDEWALK = 3.5;
@@ -64,9 +64,9 @@ export interface City {
   outerLots: Lot[];
   /** Road centre lines (same values for x and z). */
   roads: number[];
-  /** Solid areas the scooter cannot enter. */
+  /** Solid areas the scooter cannot enter: the built-up part of each block, inside its sidewalk. */
   colliders: Rect[];
-  /** Drivable extent (outer edge of the outermost roads). */
+  /** Ridable extent: the outer ring road plus the sidewalk beyond it. */
   bounds: Rect;
   spawn: { x: number; z: number; heading: number };
 }
@@ -76,9 +76,9 @@ const HOUSE_COLORS = [0xf2e8d5, 0xe9dcc0, 0xdfe3d6, 0xd9d4c8, 0xeadbb8, 0xd6dccf
 
 /** Special blocks give the city a few landmarks to ride to. */
 function kindFor(i: number, j: number): BlockKind {
-  if (i === 2 && j === 2) return 'lake';
-  if ((i === 4 && j === 1) || (i === 1 && j === 4)) return 'park';
-  if (i === 3 && j === 4) return 'plaza';
+  if ((i === 2 && j === 2) || (i === 7 && j === 6)) return 'lake';
+  if ((i === 6 && j === 1) || (i === 1 && j === 6) || (i === 4 && j === 8) || (i === 8 && j === 3)) return 'park';
+  if ((i === 4 && j === 4) || (i === 6 && j === 8)) return 'plaza';
   return 'houses';
 }
 
@@ -178,9 +178,28 @@ export function generateCity(seed = 20261005): City {
     blocks,
     outerLots,
     roads,
-    colliders: blocks.map((b) => b.rect),
-    bounds: { x: 0, z: 0, w: edge * 2, d: edge * 2 },
+    // Sidewalks are rideable; walls stop the scooter a little short so the view never ends up inside a shopfront.
+    colliders: blocks.map((b) => ({ ...b.inner, w: b.inner.w + WALL_GAP * 2, d: b.inner.d + WALL_GAP * 2 })),
+    bounds: { x: 0, z: 0, w: (near - WALL_GAP) * 2, d: (near - WALL_GAP) * 2 },
     // Middle of the road just south of the centre, heading north (-z), in the right-hand lane.
     spawn: { x: roads[GRID / 2] + ROAD / 4, z: roads[GRID / 2] + PITCH / 2, heading: 0 },
   };
+}
+
+/** How far short of a house front the scooter's edge stops, in metres. */
+const WALL_GAP = 0.8;
+
+/** Height of the sidewalk above the road, in metres. */
+export const CURB_H = 0.16;
+
+/** Ground height under a point: raised on sidewalks (inside a block's curb or beyond the outer ring road). */
+export function groundHeight(city: City, x: number, z: number): number {
+  const edge = HALF + ROAD / 2;
+  if (Math.abs(x) > edge || Math.abs(z) > edge) return CURB_H;
+  // Blocks sit on a regular grid, so the block under a point is found directly.
+  const i = Math.floor((x + HALF) / PITCH);
+  const j = Math.floor((z + HALF) / PITCH);
+  const b = city.blocks[i * GRID + j];
+  if (!b) return 0;
+  return Math.abs(x - b.rect.x) <= b.rect.w / 2 && Math.abs(z - b.rect.z) <= b.rect.d / 2 ? CURB_H : 0;
 }

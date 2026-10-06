@@ -6,7 +6,12 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 
 ## Cách chơi
 
+- Khi vào game, chọn một trong 6 đầu xe (tay ga đỏ, tay ga xanh kim cam, tay ga trắng LCD, tay ga đen LCD xanh,
+  côn tay đen, xe số mặt trắng); tất cả dùng chung mặt đồng hồ kim của tay ga đỏ. Đổi xe bằng nút *Đổi xe*.
 - Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
+- Khu phố 10×10 ô (khoảng 600 m mỗi chiều) với hồ, công viên, quảng trường; có xe máy, ô tô chạy theo làn,
+  rẽ ở ngã tư, dừng khi bị chắn, và người đi bộ trên vỉa hè. Đâm vào xe hay người đều bị chặn lại.
+- Có thể phi lên vỉa hè (xe nảy nhẹ khi qua bó vỉa); cột đèn, bồn cây, ghế đá, cọc giao thông và mặt tiền nhà vẫn chặn xe.
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
@@ -27,6 +32,8 @@ npm run build    # build ra thư mục dist/
 
 Cấu trúc:
 
+- `src/sim/traffic.ts` — NPC: xe chạy theo làn bên phải, rẽ ở ngã tư, giữ khoảng cách và dừng trước người chơi; người đi bộ vòng quanh vỉa hè.
+- `src/world/night/npcs.ts` — vẽ NPC bằng các khối hộp (instancing), có đèn pha, đèn hậu.
 - `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định, gồm loại tầng trệt,
   cửa sổ từng tầng, mái hiên, biển hiệu). Có test trong `tests/`.
 - `src/world/night/` — phố đêm, giữ đơn giản để chạy mượt:
@@ -36,6 +43,8 @@ Cấu trúc:
   - `billboards.ts` — vẽ ảnh asset (cột đèn, đèn giao thông, ghế, bồn cây, cọc) thành tấm luôn quay về
     phía người lái, mỗi loại một lần vẽ.
   - `simpleCity.ts` — ghép tất cả: đường, vỉa hè, vạch sơn, nhà, đồ đường phố, hồ, công viên, đèn pha xe.
+- `src/cockpit/bikes.ts` — cấu hình từng đầu xe: ảnh, khung đồng hồ (`gauge`, `gaugeClip`: `'ellipse'`, `'rect'` hoặc
+  đa giác), cỡ chữ (`textScale`), độ cao (`offsetY`, để đầu xe ngang mức tay ga đỏ), điểm xoay, vị trí công tắc. `src/cockpit/classicGauge.ts` — mặt đồng hồ kim.
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.

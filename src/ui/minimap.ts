@@ -46,10 +46,15 @@ export class Minimap {
     return [SIZE / 2 + x * this.scale, SIZE / 2 + z * this.scale];
   }
 
-  draw(x: number, z: number, heading: number): void {
+  draw(x: number, z: number, heading: number, others: { x: number; z: number }[] = []): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.drawImage(this.base, 0, 0, SIZE, SIZE);
+    ctx.fillStyle = 'rgba(255,240,200,0.7)';
+    for (const o of others) {
+      const [ox, oy] = this.toMap(o.x, o.z);
+      ctx.fillRect(ox - 0.75, oy - 0.75, 1.5, 1.5);
+    }
     const [px, py] = this.toMap(x, z);
     ctx.save();
     ctx.translate(px, py);

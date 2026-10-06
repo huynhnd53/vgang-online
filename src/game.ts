@@ -2,10 +2,14 @@ import * as THREE from 'three';
 import { Sound } from './audio/sound';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
-import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
-import { type Block, type City, generateCity } from './sim/city';
-import { CRUISE_SPEED, type ScooterState, stepScooter } from './sim/scooter';
+import { BIKES, bikeDef } from './cockpit/bikes';
+import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
+import { type Block, type City, generateCity, groundHeight } from './sim/city';
+import { circleHitsRect, type Rect } from './sim/geometry';
+import { CRUISE_SPEED, SCOOTER_RADIUS, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
+import { Traffic } from './sim/traffic';
+import { NpcView } from './world/night/npcs';
 import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/simpleCity';
 
 const EYE_HEIGHT = 1.35;
@@ -33,6 +37,8 @@ export class Game {
   readonly cockpit: Cockpit;
   readonly sound = new Sound();
   readonly minimap: Minimap;
+  readonly traffic: Traffic;
+  private npcs: NpcView;
 
   scooter: ScooterState;
   engineOn = false;
@@ -50,6 +56,10 @@ export class Game {
   private signalHeading = 0;
   private lastBlinkPhase = false;
   private shake = 0;
+  /** Smoothed height of the ground under the scooter (rises onto the sidewalk). */
+  private ground = 0;
+  private groundTarget = 0;
+  private staticColliders: Rect[] = [];
   private hornHeld = false;
   private hornDownAt = 0;
   private night: NightCity;
@@ -83,13 +93,19 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
     this.night = buildNightCity(this.city, `${import.meta.env.BASE_URL}assets/`);
     this.scene.add(this.night.group);
+    this.staticColliders = [...this.city.colliders, ...this.night.obstacles];
+    // Motorbikes, cars and people moving about the city.
+    this.traffic = new Traffic(this.city, 220, 320);
+    this.npcs = new NpcView(this.traffic, (x, z) => this.night.levelAt(x, z));
+    this.scene.add(this.npcs.group);
 
     this.camera.rotation.order = 'YXZ';
     this.camera.far = 1000;
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
 
-    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/handlebar.webp`);
+    this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/`);
+    this.cockpit.setBike(bikeDef(getString('bike')).id);
     $('cockpit-layer').append(this.cockpit.root);
     this.cockpit.onAction = (a) => this.handle(a);
 
@@ -110,7 +126,8 @@ export class Game {
       }
     });
 
-    if (getFlag('ride-help-seen')) $('panel').classList.add('hidden');
+    // The start screen (bike picker) shows on every visit.
+    this.buildBikePicker();
     this.refreshChrome();
   }
 
@@ -143,6 +160,40 @@ export class Game {
     }
   }
 
+  /** Cards for each front end; picking one swaps the handlebar photo and remembers it. */
+  private buildBikePicker(): void {
+    const picker = $('bike-picker');
+    const cards: HTMLButtonElement[] = [];
+    const select = (id: string) => {
+      this.cockpit.setBike(id);
+      setString('bike', id);
+      for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
+    };
+    for (const bike of BIKES) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'gauge-card bike-card';
+      card.setAttribute('role', 'radio');
+      card.dataset.id = bike.id;
+      const img = document.createElement('img');
+      img.src = `${import.meta.env.BASE_URL}assets/${bike.image}`;
+      img.alt = '';
+      // Show only the handlebar part of the photo.
+      img.style.objectPosition = `50% ${Math.round((bike.barTop / bike.height) * 100 + 15)}%`;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = bike.name;
+      const sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = bike.description;
+      card.append(img, name, sub);
+      card.addEventListener('click', () => select(bike.id));
+      cards.push(card);
+      picker.append(card);
+    }
+    select(this.cockpit.bikeId);
+  }
+
   start(): void {
     this.renderer.setAnimationLoop(() => this.frame());
   }
@@ -151,7 +202,6 @@ export class Game {
     $('panel-close').addEventListener('click', () => {
       this.sound.unlock();
       $('panel').classList.add('hidden');
-      setFlag('ride-help-seen');
     });
     $('btn-help').addEventListener('click', () => $('panel').classList.remove('hidden'));
     $('btn-mute').addEventListener('click', () => this.handle('mute'));
@@ -332,10 +382,23 @@ export class Game {
     const c = helpOpen ? { throttle: 0, brake: 0, steer: 0 } : this.input.controls();
     this.throttle = this.engineOn ? c.throttle : 0;
 
+    for (let left = rawDt; left > 1e-6; left -= 1 / 30) this.traffic.update(Math.min(1 / 30, left), this.scooter);
+    this.npcs.update(rawDt);
+    // NPCs are solid too; skip any that have already walked into the rider so the scooter can always pull away.
+    const near = this.traffic
+      .collidersNear(this.scooter.x, this.scooter.z, 25)
+      .filter((r) => !circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r));
+    // Same for furniture, in case a saved position starts on top of a lamp post or planter.
+    const stuck = this.staticColliders.some((r) => circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r));
+    const fixed = stuck
+      ? this.staticColliders.filter((r) => !circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r))
+      : this.staticColliders;
+    const colliders = near.length ? [...fixed, ...near] : fixed;
+
     let impact = 0;
     for (let left = rawDt; left > 1e-6; left -= 1 / 60) {
       const before = this.scooter;
-      const result = stepScooter(before, c, Math.min(1 / 60, left), this.engineOn, this.city.colliders, this.city.bounds);
+      const result = stepScooter(before, c, Math.min(1 / 60, left), this.engineOn, colliders, this.city.bounds);
       this.scooter = result.state;
       this.odometerKm += Math.hypot(this.scooter.x - before.x, this.scooter.z - before.z) / 1000;
       impact = Math.max(impact, result.impact);
@@ -357,7 +420,15 @@ export class Game {
     const buzz = this.engineOn ? Math.sin(this.elapsed * 40) * 0.004 * (0.3 + speedRatio) : 0;
     this.shake = Math.max(0, this.shake - dt * 2);
     const jolt = this.shake * Math.sin(this.elapsed * 60) * 0.05;
-    this.camera.position.set(s.x, EYE_HEIGHT + buzz + jolt, s.z);
+    // Riding up or down the curb: a quick hop of the camera and a thud.
+    const target = groundHeight(this.city, s.x, s.z);
+    if (target !== this.groundTarget && Math.abs(s.speed) > 1) {
+      this.shake = Math.max(this.shake, Math.min(0.5, 0.15 + Math.abs(s.speed) * 0.02));
+      this.sound.bump(2 + Math.abs(s.speed) * 0.2);
+    }
+    this.groundTarget = target;
+    this.ground += (target - this.ground) * Math.min(1, dt * 18);
+    this.camera.position.set(s.x, EYE_HEIGHT + this.ground + buzz + jolt, s.z);
     this.camera.rotation.set(-0.07 + this.input.look.pitch, s.heading + this.input.look.yaw, lean);
     const fov = 72 + speedRatio * 8;
     if (Math.abs(this.camera.fov - fov) > 0.05) {
@@ -384,7 +455,7 @@ export class Game {
       engineOn: this.engineOn,
       odometerKm: this.odometerKm,
     });
-    this.minimap.draw(s.x, s.z, s.heading);
+    this.minimap.draw(s.x, s.z, s.heading, this.traffic.vehicles);
     this.updatePrompt();
 
     this.saveTimer += dt;
