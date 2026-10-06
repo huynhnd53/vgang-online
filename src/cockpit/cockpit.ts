@@ -102,7 +102,7 @@ export class Cockpit {
     const [lo, hi] = b.visibleBottom;
     const visibleBottom = Math.max(lo, Math.min(hi, b.barTop + (vh * 0.44) / scale));
     const left = (vw - b.width * scale) / 2;
-    const top = vh - visibleBottom * scale;
+    const top = vh - (visibleBottom - (b.offsetY ?? 0)) * scale;
     this.scale = scale;
     this.root.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);

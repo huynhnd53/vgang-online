@@ -6,8 +6,8 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 
 ## Cách chơi
 
-- Khi vào game, chọn một trong 6 đầu xe (tay ga đỏ, tay ga LCD xanh, xe số kim cam, tay ga trắng, xe số mặt trắng,
-  côn tay đen); tất cả dùng chung mặt đồng hồ kim của tay ga đỏ. Đổi xe bằng nút *Đổi xe*.
+- Khi vào game, chọn một trong 6 đầu xe (tay ga đỏ, tay ga xanh kim cam, tay ga trắng LCD, tay ga đen LCD xanh,
+  côn tay đen, xe số mặt trắng); tất cả dùng chung mặt đồng hồ kim của tay ga đỏ. Đổi xe bằng nút *Đổi xe*.
 - Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
 - Khu phố 10×10 ô (khoảng 600 m mỗi chiều) với hồ, công viên, quảng trường; có xe máy, ô tô chạy theo làn,
   rẽ ở ngã tư, dừng khi bị chắn, và người đi bộ trên vỉa hè. Đâm vào xe hay người đều bị chặn lại.
@@ -43,7 +43,7 @@ Cấu trúc:
     phía người lái, mỗi loại một lần vẽ.
   - `simpleCity.ts` — ghép tất cả: đường, vỉa hè, vạch sơn, nhà, đồ đường phố, hồ, công viên, đèn pha xe.
 - `src/cockpit/bikes.ts` — cấu hình từng đầu xe: ảnh, khung đồng hồ (`gauge`, `gaugeClip`: `'ellipse'`, `'rect'` hoặc
-  đa giác), cỡ chữ (`textScale`), điểm xoay, vị trí công tắc. `src/cockpit/classicGauge.ts` — mặt đồng hồ kim.
+  đa giác), cỡ chữ (`textScale`), độ cao (`offsetY`, để đầu xe ngang mức tay ga đỏ), điểm xoay, vị trí công tắc. `src/cockpit/classicGauge.ts` — mặt đồng hồ kim.
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.
