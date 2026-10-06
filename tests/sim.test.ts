@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateCity, ROAD } from '../src/sim/city';
+import { CURB_H, generateCity, groundHeight, ROAD } from '../src/sim/city';
 import { circleHitsRect, pointInRect, rectsOverlapForTest } from './helpers';
 import { CRUISE_SPEED, type ScooterState, SCOOTER_RADIUS, stepScooter } from '../src/sim/scooter';
 
@@ -94,5 +94,24 @@ describe('city', () => {
         expect(pointInRect(x, z, bounds)).toBe(true);
       }
     }
+  });
+});
+
+describe('sidewalks', () => {
+  it('lets the scooter ride up onto a sidewalk but not into the houses behind it', () => {
+    const b = city.blocks.find((k) => k.kind === 'houses')!;
+    // Start on the road west of the block, heading east (-π/2) straight at its middle.
+    let s: ScooterState = { x: b.rect.x - b.rect.w / 2 - 4, z: b.rect.z, heading: -Math.PI / 2, speed: 0, steer: 0 };
+    s = run(s, { throttle: 0.5, brake: 0, steer: 0 }, 6);
+    expect(groundHeight(city, s.x, s.z)).toBe(CURB_H);
+    expect(s.x).toBeGreaterThan(b.rect.x - b.rect.w / 2);
+    expect(s.x).toBeLessThan(b.inner.x - b.inner.w / 2);
+  });
+
+  it('reports road height on roads and curb height on sidewalks and outside the ring road', () => {
+    const b = city.blocks[0];
+    expect(groundHeight(city, city.spawn.x, city.spawn.z)).toBe(0);
+    expect(groundHeight(city, b.rect.x - b.rect.w / 2 + 1, b.rect.z)).toBe(CURB_H);
+    expect(groundHeight(city, city.bounds.w / 2 - 0.5, 0)).toBe(CURB_H);
   });
 });

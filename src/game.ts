@@ -4,8 +4,8 @@ import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
 import { BIKES, bikeDef } from './cockpit/bikes';
 import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
-import { type Block, type City, generateCity } from './sim/city';
-import { circleHitsRect } from './sim/geometry';
+import { type Block, type City, generateCity, groundHeight } from './sim/city';
+import { circleHitsRect, type Rect } from './sim/geometry';
 import { CRUISE_SPEED, SCOOTER_RADIUS, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
 import { Traffic } from './sim/traffic';
@@ -56,6 +56,10 @@ export class Game {
   private signalHeading = 0;
   private lastBlinkPhase = false;
   private shake = 0;
+  /** Smoothed height of the ground under the scooter (rises onto the sidewalk). */
+  private ground = 0;
+  private groundTarget = 0;
+  private staticColliders: Rect[] = [];
   private hornHeld = false;
   private hornDownAt = 0;
   private night: NightCity;
@@ -89,6 +93,7 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
     this.night = buildNightCity(this.city, `${import.meta.env.BASE_URL}assets/`);
     this.scene.add(this.night.group);
+    this.staticColliders = [...this.city.colliders, ...this.night.obstacles];
     // Motorbikes, cars and people moving about the city.
     this.traffic = new Traffic(this.city, 220, 320);
     this.npcs = new NpcView(this.traffic, (x, z) => this.night.levelAt(x, z));
@@ -383,7 +388,12 @@ export class Game {
     const near = this.traffic
       .collidersNear(this.scooter.x, this.scooter.z, 25)
       .filter((r) => !circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r));
-    const colliders = near.length ? [...this.city.colliders, ...near] : this.city.colliders;
+    // Same for furniture, in case a saved position starts on top of a lamp post or planter.
+    const stuck = this.staticColliders.some((r) => circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r));
+    const fixed = stuck
+      ? this.staticColliders.filter((r) => !circleHitsRect(this.scooter.x, this.scooter.z, SCOOTER_RADIUS, r))
+      : this.staticColliders;
+    const colliders = near.length ? [...fixed, ...near] : fixed;
 
     let impact = 0;
     for (let left = rawDt; left > 1e-6; left -= 1 / 60) {
@@ -410,7 +420,15 @@ export class Game {
     const buzz = this.engineOn ? Math.sin(this.elapsed * 40) * 0.004 * (0.3 + speedRatio) : 0;
     this.shake = Math.max(0, this.shake - dt * 2);
     const jolt = this.shake * Math.sin(this.elapsed * 60) * 0.05;
-    this.camera.position.set(s.x, EYE_HEIGHT + buzz + jolt, s.z);
+    // Riding up or down the curb: a quick hop of the camera and a thud.
+    const target = groundHeight(this.city, s.x, s.z);
+    if (target !== this.groundTarget && Math.abs(s.speed) > 1) {
+      this.shake = Math.max(this.shake, Math.min(0.5, 0.15 + Math.abs(s.speed) * 0.02));
+      this.sound.bump(2 + Math.abs(s.speed) * 0.2);
+    }
+    this.groundTarget = target;
+    this.ground += (target - this.ground) * Math.min(1, dt * 18);
+    this.camera.position.set(s.x, EYE_HEIGHT + this.ground + buzz + jolt, s.z);
     this.camera.rotation.set(-0.07 + this.input.look.pitch, s.heading + this.input.look.yaw, lean);
     const fov = 72 + speedRatio * 8;
     if (Math.abs(this.camera.fov - fov) > 0.05) {

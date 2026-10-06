@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type City, GRID, HALF, ROAD, SIDEWALK } from '../../sim/city';
-import { mulberry32 } from '../../sim/geometry';
+import { mulberry32, type Rect } from '../../sim/geometry';
 import { AMBIENT, bakeLight, LightGrid } from './bake';
 import { type BillboardItem, billboards, loadTexture } from './billboards';
 import { buildFacadeAtlas, buildSignAtlas } from './facade';
@@ -31,6 +31,8 @@ export interface NightCity {
   group: THREE.Group;
   /** Headlight pool on the road; the game moves it with the scooter. */
   headlight: THREE.Mesh;
+  /** Street furniture on the sidewalks the scooter bumps into (lamp posts, planters, benches, cones). */
+  obstacles: Rect[];
   /** Light level at a point, roughly 0..1, used to dim the cockpit photo. */
   levelAt(x: number, z: number): number;
 }
@@ -413,9 +415,21 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   headlight.renderOrder = 2;
   group.add(headlight);
 
+  // Footprints of the sidewalk furniture, so riding on the sidewalk means weaving around it.
+  const box = (p: THREE.Vector3, size: number): Rect => ({ x: p.x, z: p.z, w: size, d: size });
+  const obstacles: Rect[] = [
+    ...lamps.map((l) => box(l.base, 0.3)),
+    ...parkLamps.map((p) => box(p, 0.3)),
+    ...traffic.map((t) => box(t.pos, 0.3)),
+    ...planters.map((p) => box(p.pos, 1.2)),
+    ...benches.map((p) => box(p.pos, 1.0)),
+    ...cones.map((p) => box(p.pos, 0.35)),
+  ];
+
   return {
     group,
     headlight,
+    obstacles,
     levelAt(x, z) {
       const c = grid.shade(new THREE.Vector3(x, 1.2, z), UP, new THREE.Color());
       return Math.min(1, (c.r + c.g) * 0.35);
