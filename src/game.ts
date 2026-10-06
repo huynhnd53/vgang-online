@@ -1,19 +1,24 @@
 import * as THREE from 'three';
 import { exhaustFor } from './audio/exhaust';
 import { Sound } from './audio/sound';
+import { drawClassicGauge } from './cockpit/classicGauge';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
 import { BIKES, bikeDef } from './cockpit/bikes';
 import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
-import { type Block, type City, generateCity, groundHeight } from './sim/city';
-import { circleHitsRect, type Rect } from './sim/geometry';
+import { type Block, type City, generateCity, groundHeight, HALF, ROAD, SIDEWALK } from './sim/city';
+import { circleHitsRect, type Rect, segmentEntersRect } from './sim/geometry';
 import { CRUISE_SPEED, SCOOTER_RADIUS, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
 import { Traffic } from './sim/traffic';
 import { NpcView } from './world/night/npcs';
+import { PlayerBike } from './world/night/rider';
 import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/simpleCity';
 
 const EYE_HEIGHT = 1.35;
+/** Third-person camera: distance behind the rider, and the point it orbits around (above the seat). */
+const CHASE_DISTANCE = 4.6;
+const CHASE_PIVOT_HEIGHT = 1.2;
 const SAVE_INTERVAL = 2;
 const LANDMARK_NAMES: Partial<Record<Block['kind'], string>> = {
   lake: 'Hồ Sen',
@@ -22,6 +27,7 @@ const LANDMARK_NAMES: Partial<Record<Block['kind'], string>> = {
 };
 
 type Signal = 'left' | 'right' | null;
+type View = 'first' | 'third';
 
 function $(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -67,6 +73,14 @@ export class Game {
   private cockpitLight = -1;
   private landmark: Block | null = null;
   private throttle = 0;
+  private brake = 0;
+  private view: View = getString('view') === 'third' ? 'third' : 'first';
+  private playerBike: PlayerBike;
+  /** Third-person camera direction, trailing the scooter's heading. */
+  private camYaw = 0;
+  private houseWalls: Rect[];
+  private miniGauge = $('mini-gauge') as HTMLCanvasElement;
+  private miniGaugeKey = '';
 
   constructor(canvas: HTMLCanvasElement) {
     const { spawn } = this.city;
@@ -107,6 +121,11 @@ export class Game {
 
     this.cockpit = new Cockpit(`${import.meta.env.BASE_URL}assets/`);
     this.cockpit.setBike(bikeDef(getString('bike')).id);
+    this.playerBike = new PlayerBike(bikeDef(this.cockpit.bikeId).model);
+    this.scene.add(this.playerBike.group);
+    this.camYaw = this.scooter.heading;
+    // House fronts the chase camera must stay in front of.
+    this.houseWalls = this.city.blocks.filter((b) => b.kind === 'houses').map((b) => b.inner);
     $('cockpit-layer').append(this.cockpit.root);
     this.cockpit.onAction = (a) => this.handle(a);
 
@@ -168,6 +187,7 @@ export class Game {
     const select = (id: string) => {
       this.cockpit.setBike(id);
       this.sound.setBike(id);
+      this.setPlayerBike(id);
       setString('bike', id);
       for (const c of cards) c.setAttribute('aria-checked', String(c.dataset.id === id));
     };
@@ -215,6 +235,7 @@ export class Game {
     });
     $('btn-help').addEventListener('click', () => $('panel').classList.remove('hidden'));
     $('btn-mute').addEventListener('click', () => this.handle('mute'));
+    $('btn-view').addEventListener('click', () => this.handle('view'));
     $('rotate-dismiss').addEventListener('click', () => {
       setFlag('rotate-dismissed');
       this.refreshChrome();
@@ -281,6 +302,11 @@ export class Game {
         this.sound.setMuted(!this.sound.muted);
         this.persist();
         break;
+      case 'view':
+        this.view = this.view === 'first' ? 'third' : 'first';
+        this.camYaw = this.scooter.heading;
+        setString('view', this.view);
+        break;
     }
     this.refreshChrome();
   }
@@ -312,6 +338,9 @@ export class Game {
     const touch = this.input.touchMode;
     $('touch').classList.toggle('hidden', !touch);
     $('btn-mute').textContent = this.sound.muted ? 'Âm thanh: tắt' : 'Âm thanh: bật';
+    // The button names the view it switches to.
+    $('btn-view').textContent = this.view === 'first' ? 'Nhìn: sau xe' : 'Nhìn: tay lái';
+    $('app').classList.toggle('view-third', this.view === 'third');
     $('t-light').classList.toggle('on', this.headlight);
     $('t-engine').classList.toggle('on', this.engineOn);
     $('t-engine').textContent = this.engineOn ? 'Tắt' : 'Đề';
@@ -379,6 +408,65 @@ export class Game {
     }
   }
 
+  private setPlayerBike(id: string): void {
+    this.scene.remove(this.playerBike.group);
+    this.playerBike.dispose();
+    this.playerBike = new PlayerBike(bikeDef(id).model);
+    this.scene.add(this.playerBike.group);
+  }
+
+  /** Chase camera behind the rider; dragging orbits it, and it never ends up inside a house. */
+  private placeChaseCamera(dt: number, jolt: number): void {
+    const s = this.scooter;
+    let turn = s.heading - this.camYaw;
+    turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+    this.camYaw += turn * (1 - Math.exp(-dt * 3.5));
+    const yaw = this.camYaw + this.input.look.yaw * 2;
+    const pitch = Math.max(0.06, Math.min(0.9, 0.3 - this.input.look.pitch * 1.5));
+    const dx = Math.sin(yaw) * Math.cos(pitch);
+    const dz = Math.cos(yaw) * Math.cos(pitch);
+    const px = s.x;
+    const pz = s.z;
+    const py = this.ground + CHASE_PIVOT_HEIGHT;
+    const dist = this.chaseClearance(px, pz, dx, dz, CHASE_DISTANCE + Math.min(1.6, Math.abs(s.speed) / 16.7) * 0.6);
+    this.camera.position.set(px + dx * dist, py + Math.sin(pitch) * dist + jolt, pz + dz * dist);
+    this.camera.lookAt(px - Math.sin(yaw) * 2, py + 0.2, pz - Math.cos(yaw) * 2);
+  }
+
+  /** How far back the camera can go along (dx, dz) before hitting a house front or the outer row of houses. */
+  private chaseClearance(px: number, pz: number, dx: number, dz: number, dist: number): number {
+    let best = dist;
+    const ex = dx * dist;
+    const ez = dz * dist;
+    for (const w of this.houseWalls) {
+      const t = segmentEntersRect(px, pz, ex, ez, w, 0.3);
+      if (t !== null) best = Math.min(best, t * dist);
+    }
+    // The outer ring of houses starts just past the outermost sidewalk.
+    const lim = HALF + ROAD / 2 + SIDEWALK - 0.3;
+    for (const [p, e] of [
+      [px, ex],
+      [pz, ez],
+    ]) {
+      if (Math.abs(p + e) > lim && e !== 0) best = Math.min(best, (((Math.sign(e) * lim - p) / e) * dist));
+    }
+    return Math.max(0.8, best - 0.35);
+  }
+
+  private drawMiniGauge(v: Parameters<typeof drawClassicGauge>[1]): void {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.round(this.miniGauge.clientWidth * dpr));
+    const h = Math.max(1, Math.round(this.miniGauge.clientHeight * dpr));
+    const key = [v.speedKmh.toFixed(1), v.leftLamp, v.rightLamp, v.headlight, v.engineOn, v.odometerKm.toFixed(1), w, h].join('|');
+    if (key === this.miniGaugeKey) return;
+    this.miniGaugeKey = key;
+    if (this.miniGauge.width !== w || this.miniGauge.height !== h) {
+      this.miniGauge.width = w;
+      this.miniGauge.height = h;
+    }
+    drawClassicGauge(this.miniGauge, v, { clip: 'ellipse' });
+  }
+
   private frame(): void {
     this.timer.update();
     // Physics runs in fixed steps so slow devices still ride at the true speed.
@@ -391,6 +479,7 @@ export class Game {
     const helpOpen = !$('panel').classList.contains('hidden');
     const c = helpOpen ? { throttle: 0, brake: 0, steer: 0 } : this.input.controls();
     this.throttle = this.engineOn ? c.throttle : 0;
+    this.brake = c.brake;
 
     for (let left = rawDt; left > 1e-6; left -= 1 / 30) this.traffic.update(Math.min(1 / 30, left), this.scooter);
     this.npcs.update(rawDt);
@@ -438,9 +527,13 @@ export class Game {
     }
     this.groundTarget = target;
     this.ground += (target - this.ground) * Math.min(1, dt * 18);
-    this.camera.position.set(s.x, EYE_HEIGHT + this.ground + buzz + jolt, s.z);
-    this.camera.rotation.set(-0.07 + this.input.look.pitch, s.heading + this.input.look.yaw, lean);
-    const fov = 72 + speedRatio * 8;
+    const third = this.view === 'third';
+    if (third) this.placeChaseCamera(dt, jolt);
+    else {
+      this.camera.position.set(s.x, EYE_HEIGHT + this.ground + buzz + jolt, s.z);
+      this.camera.rotation.set(-0.07 + this.input.look.pitch, s.heading + this.input.look.yaw, lean);
+    }
+    const fov = third ? 66 + speedRatio * 6 : 72 + speedRatio * 8;
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
@@ -456,7 +549,7 @@ export class Game {
       this.cockpit.setLighting(level);
     }
 
-    this.cockpit.render({
+    const gauge = {
       speedKmh: Math.abs(s.speed) * 3.6,
       steer: s.steer,
       leftLamp: signals.left,
@@ -464,7 +557,19 @@ export class Game {
       headlight: this.headlight,
       engineOn: this.engineOn,
       odometerKm: this.odometerKm,
-    });
+    };
+    this.playerBike.group.visible = third;
+    if (third) {
+      this.playerBike.update(dt, s, this.ground, this.night.levelAt(s.x, s.z), {
+        head: this.headlight,
+        brake: this.brake > 0,
+        left: signals.left,
+        right: signals.right,
+      });
+      this.drawMiniGauge(gauge);
+    } else {
+      this.cockpit.render(gauge);
+    }
     this.minimap.draw(s.x, s.z, s.heading, this.traffic.vehicles);
     this.updatePrompt();
 
@@ -478,3 +583,4 @@ export class Game {
     this.adaptResolution(frameTime);
   }
 }
+

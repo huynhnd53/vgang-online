@@ -29,3 +29,28 @@ export function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * Where a segment from (px, pz) along (ex, ez) first enters a rectangle grown by `pad`, as a fraction of its
+ * length, or null if it misses (or starts inside).
+ */
+export function segmentEntersRect(px: number, pz: number, ex: number, ez: number, r: Rect, pad: number): number | null {
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, e, c, half] of [
+    [px, ex, r.x, r.w / 2 + pad],
+    [pz, ez, r.z, r.d / 2 + pad],
+  ]) {
+    if (Math.abs(e) < 1e-9) {
+      if (Math.abs(p - c) > half) return null;
+      continue;
+    }
+    let a = (c - half - p) / e;
+    let b = (c + half - p) / e;
+    if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, b);
+    if (t0 > t1) return null;
+  }
+  return t0 > 0 ? t0 : null;
+}

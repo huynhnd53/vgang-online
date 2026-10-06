@@ -42,6 +42,14 @@ export interface BikeDef {
   textScale?: number;
   gaugeClip: GaugeClip;
   hotspots: Hotspot[];
+  /** How the bike looks from outside (third-person view): body style, main paint and trim colour. */
+  model: BikeModel;
+}
+
+export interface BikeModel {
+  kind: 'scooter' | 'naked' | 'underbone';
+  paint: number;
+  trim: number;
 }
 
 export const BIKES: BikeDef[] = [
@@ -58,6 +66,7 @@ export const BIKES: BikeDef[] = [
     gauge: { x: 615, y: 345, w: 480, h: 220 },
     gaugeClip: 'ellipse',
     fit: 0.952,
+    model: { kind: 'scooter', paint: 0xb3161b, trim: 0x1c1c1e },
     hotspots: [
       { x: 368, y: 440, w: 70, h: 78, label: 'Đèn pha', down: 'light' },
       { x: 384, y: 535, w: 100, h: 60, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -80,6 +89,7 @@ export const BIKES: BikeDef[] = [
     pivot: { x: 790, y: 1180 },
     gauge: { x: 483, y: 406, w: 611, h: 324 },
     gaugeClip: 'ellipse',
+    model: { kind: 'scooter', paint: 0x1d3f8f, trim: 0xd9d6cf },
     hotspots: [
       { x: 205, y: 550, w: 90, h: 90, label: 'Đèn pha', down: 'light' },
       { x: 250, y: 705, w: 70, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -108,6 +118,7 @@ export const BIKES: BikeDef[] = [
       [0.1, 1],
     ],
     textScale: 1.4,
+    model: { kind: 'scooter', paint: 0xe9e7e2, trim: 0x232326 },
     hotspots: [
       { x: 385, y: 420, w: 60, h: 60, label: 'Đèn pha', down: 'light' },
       { x: 365, y: 500, w: 70, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -131,6 +142,7 @@ export const BIKES: BikeDef[] = [
     gauge: { x: 678, y: 400, w: 274, h: 143 },
     gaugeClip: 'rect',
     textScale: 1.4,
+    model: { kind: 'scooter', paint: 0x1b1c1f, trim: 0x2a63c9 },
     hotspots: [
       { x: 235, y: 470, w: 70, h: 100, label: 'Đèn pha', down: 'light' },
       { x: 300, y: 640, w: 70, h: 55, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -154,6 +166,7 @@ export const BIKES: BikeDef[] = [
     gauge: { x: 712, y: 298, w: 266, h: 108 },
     gaugeClip: 'rect',
     textScale: 1.4,
+    model: { kind: 'naked', paint: 0x18191b, trim: 0xb8babd },
     hotspots: [
       { x: 310, y: 560, w: 70, h: 60, label: 'Đèn pha', down: 'light' },
       { x: 280, y: 745, w: 60, h: 45, label: 'Còi', down: 'horn-down', up: 'horn-up' },
@@ -181,6 +194,7 @@ export const BIKES: BikeDef[] = [
       [0.75, 0.98],
       [0.25, 0.98],
     ],
+    model: { kind: 'underbone', paint: 0x1f4fa8, trim: 0xe6e4de },
     hotspots: [
       { x: 200, y: 470, w: 80, h: 90, label: 'Đèn pha', down: 'light' },
       { x: 255, y: 650, w: 85, h: 50, label: 'Còi', down: 'horn-down', up: 'horn-up' },

@@ -5,7 +5,8 @@ export type Action =
   | 'signal-right'
   | 'light'
   | 'engine'
-  | 'mute';
+  | 'mute'
+  | 'view';
 
 const JOYSTICK_RADIUS = 60;
 const LOOK_SENSITIVITY = 0.005;
@@ -42,6 +43,7 @@ export class Input {
       else if (e.code === 'KeyL') this.push('light');
       else if (e.code === 'KeyK' || e.code === 'Enter') this.push('engine');
       else if (e.code === 'KeyM') this.push('mute');
+      else if (e.code === 'KeyV' || e.code === 'KeyC') this.push('view');
     });
     window.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);

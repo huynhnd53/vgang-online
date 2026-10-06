@@ -473,3 +473,22 @@ details.help summary {
     font-size: 13px;
   }
 }
+
+/* Third-person view: no handlebar photo, just a small speedometer in the corner, clear of the bike. */
+#mini-gauge {
+  display: none;
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(220px, 36vw);
+  aspect-ratio: 480 / 220;
+  pointer-events: none;
+}
+
+#app.view-third #mini-gauge {
+  display: block;
+}
+
+#app.view-third #cockpit-layer {
+  display: none;
+}
