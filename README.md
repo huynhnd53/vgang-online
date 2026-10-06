@@ -12,6 +12,8 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - Khu phố 10×10 ô (khoảng 600 m mỗi chiều) với hồ, công viên, quảng trường; có xe máy, ô tô chạy theo làn,
   rẽ ở ngã tư, dừng khi bị chắn, và người đi bộ trên vỉa hè. Đâm vào xe hay người đều bị chặn lại.
 - Có thể phi lên vỉa hè (xe nảy nhẹ khi qua bó vỉa); cột đèn, bồn cây, ghế đá, cọc giao thông và mặt tiền nhà vẫn chặn xe.
+- Mỗi xe có tiếng bô riêng: tay ga êm hoặc trầm, tay ga thể thao khàn, côn tay có sang số và nổ pô khi nhả ga,
+  xe số "tạch tạch". Bấm vào xe ở màn chọn xe để nghe thử.
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
@@ -48,6 +50,8 @@ Cấu trúc:
 - `src/cockpit/` — lớp tay lái: ảnh `public/assets/handlebar.webp` (được làm tối theo ánh đèn quanh xe),
   đồng hồ tốc độ vẽ đè lên mặt kính, vùng bấm công tắc.
 - `src/audio/` — âm thanh tổng hợp bằng Web Audio (máy nổ, còi, xi nhan, va chạm), không cần file âm thanh.
+  - `exhaust.ts` — tiếng bô từng xe: mỗi kỳ nổ là một xung vang theo cộng hưởng ống xả, vòng tua và số
+    tính từ ga và tốc độ (tay ga giữ vòng tua, xe số/côn tay sang số).
 - `src/input/`, `src/ui/` — điều khiển bàn phím/chuột/cảm ứng và bản đồ nhỏ.
 
 Game tự giảm độ phân giải khi khung hình tụt.

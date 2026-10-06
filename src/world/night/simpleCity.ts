@@ -49,11 +49,15 @@ function alongRoad(city: City, spacing: number, offset: number, margin: number):
   return out;
 }
 
+/** Street lamps every LAMP_SPACING metres along each curb, staggered between the two sides of a road. */
+const LAMP_SPACING = 18;
+const lampSpots = (city: City, side: number) => alongRoad(city, LAMP_SPACING, side < 0 ? 6 : 6 + LAMP_SPACING / 2, 2.5);
+
 export function layoutLamps(city: City): Lamp[] {
   const lamps: Lamp[] = [];
   for (const r of city.roads) {
     for (const side of [-1, 1]) {
-      for (const t of alongRoad(city, 26, side < 0 ? 6 : 19, 2.5)) {
+      for (const t of lampSpots(city, side)) {
         const across = r + side * (ROAD / 2 + 0.45);
         lamps.push({ base: new THREE.Vector3(across, CURB_H, t), out: new THREE.Vector3(-side, 0, 0) });
         lamps.push({ base: new THREE.Vector3(t, CURB_H, across), out: new THREE.Vector3(0, 0, -side) });
@@ -348,10 +352,11 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   const benches: BillboardItem[] = [];
   for (const r of city.roads) {
     for (const side of [-1, 1]) {
+      const lampsHere = lampSpots(city, side);
       for (const t of alongRoad(city, 13, side < 0 ? 12.5 : 25.5, 3)) {
         for (const axis of ['x', 'z'] as const) {
           const roll = rand();
-          if (roll < 0.3) continue;
+          if (roll < 0.3 || lampsHere.some((l) => Math.abs(l - t) < 2.4)) continue;
           const across = r + side * (ROAD / 2 + 1.4);
           const p = axis === 'x' ? new THREE.Vector3(across, CURB_H, t) : new THREE.Vector3(t, CURB_H, across);
           (roll < 0.42 ? benches : planters).push({ pos: p, light: lightAt(p) });
