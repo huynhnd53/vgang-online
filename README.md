@@ -6,6 +6,7 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 
 ## Cách chơi
 
+- Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
 - **Máy tính:** W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái, K nổ máy, H còi (giữ để bóp dài), Q E xi nhan,
   L đèn pha, M tắt tiếng. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.

@@ -164,7 +164,7 @@ export class Cockpit {
     const cx = 238;
     const cy = 158;
     const R = 98;
-    const MAX = 140;
+    const MAX = 200;
     const SWEEP = (96 * Math.PI) / 180;
     const angleFor = (kmh: number) => -SWEEP + (kmh / MAX) * SWEEP * 2;
     const polar = (a: number, r: number) => [cx + Math.sin(a) * r, cy - Math.cos(a) * r] as const;
@@ -186,13 +186,13 @@ export class Cockpit {
       const major = s % 20 === 0;
       const [x0, y0] = polar(a, R);
       const [x1, y1] = polar(a, R - (major ? 13 : 7));
-      ctx.strokeStyle = s >= 120 ? '#ff5a4f' : '#f4f4f4';
+      ctx.strokeStyle = s >= 160 ? '#ff5a4f' : '#f4f4f4';
       ctx.lineWidth = major ? 3 : 1.5;
       ctx.beginPath();
       ctx.moveTo(x0, y0);
       ctx.lineTo(x1, y1);
       ctx.stroke();
-      if (major) {
+      if (s % 40 === 0) {
         const [tx, ty] = polar(a, R - 28);
         ctx.fillText(String(s), tx, ty);
       }

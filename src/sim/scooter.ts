@@ -1,6 +1,7 @@
 import { type Rect, circleHitsRect } from './geometry';
 
-export const MAX_SPEED = 60 / 3.6;
+/** Reference speed for handling and camera effects; there is no top speed. */
+export const CRUISE_SPEED = 60 / 3.6;
 export const SCOOTER_RADIUS = 0.45;
 const ACCEL = 3.4;
 const BRAKE = 9;
@@ -33,7 +34,7 @@ export interface StepResult {
 
 /** Steering lock narrows with speed so high-speed turns stay stable. */
 export function maxSteerAngle(speed: number): number {
-  const t = Math.min(1, Math.abs(speed) / MAX_SPEED);
+  const t = Math.min(1, Math.abs(speed) / CRUISE_SPEED);
   return 0.55 + (0.14 - 0.55) * t;
 }
 
@@ -66,10 +67,10 @@ export function stepScooter(
 
   let speed = s.speed;
   if (speed >= 0) {
-    const ratio = speed / MAX_SPEED;
-    speed += throttle * ACCEL * (1 - ratio * ratio) * dt;
-    // Rolling resistance plus air drag; mostly felt when coasting.
-    const drag = (0.25 + 0.01 * speed * speed) * (1 - throttle * 0.8);
+    // No top speed: holding the throttle keeps accelerating, a little more gently the faster you go.
+    speed += (throttle * ACCEL * dt) / (1 + speed / 30);
+    // Rolling resistance plus air drag slow the scooter only while coasting.
+    const drag = (0.25 + 0.01 * speed * speed) * (1 - throttle);
     speed -= (brake * BRAKE + drag) * dt;
     if (speed < 0) {
       // Holding the brake at a standstill walks the scooter backwards slowly.
@@ -78,7 +79,6 @@ export function stepScooter(
   } else {
     speed = brake > 0.5 && throttle === 0 ? Math.max(-REVERSE_SPEED, speed - 2 * dt) : Math.min(0, speed + 4 * dt);
   }
-  speed = Math.min(speed, MAX_SPEED);
 
   const angle = -steer * maxSteerAngle(speed);
   const heading = s.heading + ((speed * Math.tan(angle)) / WHEELBASE) * dt;

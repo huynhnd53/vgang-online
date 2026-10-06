@@ -4,7 +4,7 @@ import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
 import { getFlag, loadRide, type RideSave, saveRide, setFlag } from './save';
 import { type Block, type City, generateCity } from './sim/city';
-import { MAX_SPEED, type ScooterState, stepScooter } from './sim/scooter';
+import { CRUISE_SPEED, type ScooterState, stepScooter } from './sim/scooter';
 import { Minimap } from './ui/minimap';
 import { buildNightCity, FOG_COLOR, FOG_DENSITY, type NightCity } from './world/night/simpleCity';
 
@@ -352,7 +352,7 @@ export class Game {
 
     // First-person camera: lean into turns, a little road buzz, and the rider's head look.
     const s = this.scooter;
-    const speedRatio = Math.abs(s.speed) / MAX_SPEED;
+    const speedRatio = Math.min(1.6, Math.abs(s.speed) / CRUISE_SPEED);
     const lean = -s.steer * speedRatio * 0.16;
     const buzz = this.engineOn ? Math.sin(this.elapsed * 40) * 0.004 * (0.3 + speedRatio) : 0;
     this.shake = Math.max(0, this.shake - dt * 2);
