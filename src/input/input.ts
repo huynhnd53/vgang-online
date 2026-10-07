@@ -5,7 +5,8 @@ export type Action =
   | 'signal-right'
   | 'light'
   | 'engine'
-  | 'mute';
+  | 'mute'
+  | 'view';
 
 const JOYSTICK_RADIUS = 60;
 const LOOK_SENSITIVITY = 0.005;
@@ -22,6 +23,8 @@ export class Input {
   /** Head turn while dragging; springs back to centre when released. */
   look = { yaw: 0, pitch: 0 };
   touchMode: boolean;
+  /** The on-screen wheelie button is held. */
+  liftButton = false;
   onFirstInput: () => void = () => {};
   onTouchModeChange: (touch: boolean) => void = () => {};
 
@@ -42,6 +45,7 @@ export class Input {
       else if (e.code === 'KeyL') this.push('light');
       else if (e.code === 'KeyK' || e.code === 'Enter') this.push('engine');
       else if (e.code === 'KeyM') this.push('mute');
+      else if (e.code === 'KeyV' || e.code === 'KeyC') this.push('view');
     });
     window.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
@@ -123,7 +127,7 @@ export class Input {
     return a;
   }
 
-  controls(): { throttle: number; brake: number; steer: number } {
+  controls(): { throttle: number; brake: number; steer: number; lift: boolean } {
     const k = this.keys;
     const kThrottle = k.has('KeyW') || k.has('ArrowUp') ? 1 : 0;
     const kBrake = k.has('KeyS') || k.has('ArrowDown') || k.has('Space') ? 1 : 0;
@@ -134,6 +138,8 @@ export class Input {
       throttle: Math.max(kThrottle, dead(Math.max(0, sy))),
       brake: Math.max(kBrake, dead(Math.max(0, -sy))),
       steer: Math.max(-1, Math.min(1, kSteer + dead(this.stick.x))),
+      // Lean back and snap the throttle: Shift or B, or the touch button.
+      lift: this.liftButton || k.has('ShiftLeft') || k.has('ShiftRight') || k.has('KeyB'),
     };
   }
 
@@ -147,6 +153,7 @@ export class Input {
 
   reset(): void {
     this.keys.clear();
+    this.liftButton = false;
     if (this.actions.length === 0 || this.actions[this.actions.length - 1] !== 'horn-up') this.push('horn-up');
     this.stick = { x: 0, y: 0 };
     this.stickPointer = null;

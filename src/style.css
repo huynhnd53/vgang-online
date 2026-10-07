@@ -473,3 +473,71 @@ details.help summary {
     font-size: 13px;
   }
 }
+
+/* Third-person view: no handlebar photo, just a small speedometer in the corner, clear of the bike. */
+#mini-gauge {
+  display: none;
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(220px, 36vw);
+  aspect-ratio: 480 / 220;
+  pointer-events: none;
+}
+
+#app.view-third #mini-gauge {
+  display: block;
+}
+
+#app.view-third #cockpit-layer,
+#app.crashed #cockpit-layer {
+  display: none;
+}
+
+/* Wheelie meter: distance on the back wheel, and the angle against the balance zone. */
+#wheelie {
+  position: absolute;
+  left: 50%;
+  top: calc(max(10px, env(safe-area-inset-top)) + 48px);
+  transform: translateX(-50%);
+  min-width: 220px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(20, 28, 32, 0.72);
+  color: #fff;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+#wheelie.crash {
+  background: rgba(150, 30, 24, 0.85);
+}
+
+.wheelie-bar {
+  position: relative;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #5a6672 0%, #5a6672 60%, #c0392b 100%);
+}
+
+.wheelie-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 5px;
+  background: #3ee86f;
+}
+
+.wheelie-mark {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}

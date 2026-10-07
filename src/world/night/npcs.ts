@@ -9,7 +9,7 @@ const BIKE_PAINT = [0xb3261e, 0x1d4f91, 0xe8e6df, 0x202022, 0x6d6f73, 0x2f6f3a, 
 const SHIRTS = [0x3b6ea8, 0xc94f3d, 0xe0c060, 0x4a8a5a, 0xdddddd, 0x6d4a8a, 0x2b2b2b, 0xd08a4a];
 
 /** Box with a single colour baked into vertex colours (white means "use the instance colour"). */
-function box(w: number, h: number, d: number, x: number, y: number, z: number, color = 0xffffff): THREE.BufferGeometry {
+export function box(w: number, h: number, d: number, x: number, y: number, z: number, color = 0xffffff): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d).toNonIndexed();
   g.translate(x, y, z);
   const c = new THREE.Color(color);

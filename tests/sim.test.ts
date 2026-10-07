@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CURB_H, generateCity, groundHeight, ROAD } from '../src/sim/city';
 import { circleHitsRect, pointInRect, rectsOverlapForTest } from './helpers';
+import { segmentEntersRect } from '../src/sim/geometry';
 import { CRUISE_SPEED, type ScooterState, SCOOTER_RADIUS, stepScooter } from '../src/sim/scooter';
 
 const city = generateCity();
@@ -113,5 +114,18 @@ describe('sidewalks', () => {
     expect(groundHeight(city, city.spawn.x, city.spawn.z)).toBe(0);
     expect(groundHeight(city, b.rect.x - b.rect.w / 2 + 1, b.rect.z)).toBe(CURB_H);
     expect(groundHeight(city, city.bounds.w / 2 - 0.5, 0)).toBe(CURB_H);
+  });
+});
+
+describe('segmentEntersRect', () => {
+  const wall = { x: 10, z: 0, w: 4, d: 4 };
+  it('finds where a segment first reaches a (padded) rectangle', () => {
+    expect(segmentEntersRect(0, 0, 20, 0, wall, 0)).toBeCloseTo(8 / 20);
+    expect(segmentEntersRect(0, 0, 20, 0, wall, 1)).toBeCloseTo(7 / 20);
+  });
+  it('returns null when the segment misses, stops short, or starts inside', () => {
+    expect(segmentEntersRect(0, 5, 20, 0, wall, 0)).toBeNull();
+    expect(segmentEntersRect(0, 0, 5, 0, wall, 0)).toBeNull();
+    expect(segmentEntersRect(10, 0, 20, 0, wall, 0)).toBeNull();
   });
 });
